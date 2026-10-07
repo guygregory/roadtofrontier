@@ -22,20 +22,20 @@ export class BootScene implements Scene {
       text(g, 'PARTNER-OS ROM 1.3', 4, 2, C.DGREY);
       text(g, 'READY.', 316, 2, C.DGREY, { align: 'right' });
       // drive slot
-      g.rect(96, 196, 128, 10, C.DGREY);
-      g.rect(100, 199, 120, 4, C.BLACK);
-      g.rect(198, 198, 8, 5, Math.floor(t * 2) % 2 ? C.MSGREEN : C.DGREEN);
-      // floppy bobbing toward the slot
-      const bob = Math.round(Math.sin(t * 3) * 4);
-      g.blit(SPR.floppy, 112, 40 + bob, { scale: 3 });
-      text(g, 'ROAD TO', 160, 82 + bob, C.NAVY, { align: 'center', bold: true });
-      text(g, 'FRONTIER', 160, 94 + bob, C.NAVY, { align: 'center', bold: true });
-      text(g, 'DISK 1', 160, 106 + bob, C.GREY, { align: 'center' });
-      msLogo(g, 154, 118 + bob, 5, 2);
-      // arrow
-      const ay = 150 + (Math.floor(t * 4) % 2) * 3;
-      for (let i = 0; i < 6; i++) g.hline(160 - i, 160 + i, ay + 26 - i, C.ROYAL);
-      g.rect(158, ay + 16, 5, 6, C.ROYAL);
+      g.rect(96, 40, 128, 10, C.DGREY);
+      g.rect(100, 43, 120, 4, C.BLACK);
+      g.rect(198, 42, 8, 5, Math.floor(t * 2) % 2 ? C.MSGREEN : C.DGREEN);
+      // floppy below, bobbing toward the slot
+      const fy = 100 + Math.round(Math.sin(t * 3) * 4);
+      g.blit(SPR.floppy, 112, fy, { scale: 3 });
+      text(g, 'ROAD TO', 160, fy + 42, C.NAVY, { align: 'center', bold: true });
+      text(g, 'FRONTIER', 160, fy + 54, C.NAVY, { align: 'center', bold: true });
+      text(g, 'DISK 1', 160, fy + 66, C.GREY, { align: 'center' });
+      msLogo(g, 154, fy + 78, 5, 2);
+      // arrow pointing up from the disk into the slot
+      const ay = 71 - (Math.floor(t * 4) % 2) * 3;
+      for (let i = 0; i < 6; i++) g.hline(160 - i, 160 + i, ay + i, C.ROYAL);
+      g.rect(158, ay + 5, 5, 6, C.ROYAL);
       text(g, 'INSERT DISK - CLICK OR PRESS ANY KEY', 160, 222, C.NAVY, { align: 'center' });
       text(g, 'Best with sound on. M toggles music, F fullscreen.', 160, 236, C.GREY, { align: 'center' });
       if (app.input.anyKey || app.input.clicked) {

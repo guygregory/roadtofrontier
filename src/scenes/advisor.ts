@@ -1,7 +1,7 @@
 import { AREA, AREAS, DISTRIBUTOR, FRONTIER, PS_FEE, SPECS } from '../game/data';
 import { credits, fyOf, money, qOf } from '../game/format';
 import { advisorKind } from '../game/advisor';
-import { canPurchaseDesignation, canStopBenefits, frontierQualified, hasSpec, specQualified, specUnlocked, totalCustomers } from '../game/rules';
+import { canPurchaseDesignation, canStopBenefits, directBillGaps, frontierQualified, hasSpec, specQualified, specUnlocked, totalCustomers } from '../game/rules';
 import { forecastCosts, lastRevenue } from '../game/sim';
 import type { GameState } from '../game/types';
 
@@ -37,7 +37,10 @@ export function advisorTips(s: GameState): string[] {
   } else if (kind === 'distributor') {
     tips.push(`Earn a {y}second specialization{/} and Microsoft adds you to its Managed Partner List next FY, with a PDM. - ${DISTRIBUTOR.am}`);
     tips.push(`Our CSP team can help you claim {c}partner incentives{/}: Microsoft-funded customer workshops (ACTIONS). - ${DISTRIBUTOR.am}`);
-    if (s.designations.length > 0 && totalCustomers(s) >= 60) tips.push(`You qualify for {c}CSP Direct Bill{/}: better margins, but no more distributor support. We'd miss you! - ${DISTRIBUTOR.am}`);
+    const gaps = directBillGaps(s);
+    if (gaps.length === 0) tips.push(`You qualify for {c}CSP Direct Bill{/}: better margins and no 1% fee, but no more distributor support. We'd miss you! - ${DISTRIBUTOR.am}`);
+    else if (gaps.length === 1 && !s.unified && s.designations.length > 0)
+      tips.push(`You're over $1M CSP revenue a year. Add {c}Unified for Partners{/} and you can go {c}CSP Direct Bill{/}. - ${DISTRIBUTOR.am}`);
   } else {
     tips.push("Let's co-sell: register referrals in Partner Center and I'll walk your pipeline with the account teams (ACTIONS).");
   }

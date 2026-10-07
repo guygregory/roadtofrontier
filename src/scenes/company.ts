@@ -6,7 +6,7 @@ import { AREA, AREAS, CFG, PS_FEE } from '../game/data';
 import { credits, money } from '../game/format';
 import { advisor } from '../game/advisor';
 import { buyBenefits, borrow, cancelUnified, fireStaff, hireArchitect, hireStaff, repay, setBenefitsRenewal } from '../game/actions';
-import { canStopBenefits, creditLimit, maxHires, totalCerts } from '../game/rules';
+import { canStopBenefits, creditLimit, maxHires, totalCerts, unifiedCost } from '../game/rules';
 import { background, footer, header, keyHint, meter, requireState, statusLine } from './common';
 import { HubScene } from './hub';
 
@@ -54,12 +54,12 @@ export class CompanyScene implements Scene {
 
     // Programme membership & services
     panel(g, 2, 150, 316, 94, 'MEMBERSHIP & SERVICES');
-    const cspTxt = s.csp === 'none' ? 'Not enrolled' : s.csp === 'indirect' ? 'Indirect Reseller' : 'Direct Bill';
+    const cspTxt = s.csp === 'none' ? 'Not enrolled' : s.csp === 'indirect' ? 'Indirect (1% fee)' : 'Direct Bill';
     statusLine(g, 8, 165, 'CSP', cspTxt, s.csp === 'none' ? C.ORANGE : C.GREEN, 150);
     const psTxt = s.benefits === 'none' ? 'None' : s.benefits === 'core' ? 'Core' : 'Expanded';
     statusLine(g, 8, 174, 'Partner Success', psTxt, s.benefits !== 'none' && !s.benefitsRenew ? C.ORANGE : C.WHITE, 150);
     statusLine(g, 8, 183, 'Azure credits', credits(s.azureCredits), C.CYAN, 150);
-    statusLine(g, 8, 192, 'Unified', s.unified ? `Active ${money(CFG.unifiedCost)}/qtr` : 'Not subscribed', s.unified ? C.GREEN : C.GREY, 150);
+    statusLine(g, 8, 192, 'Unified', s.unified ? `Active ${money(unifiedCost(s))}/qtr` : 'Not subscribed', s.unified ? C.GREEN : C.GREY, 150);
     if (s.benefits !== 'expanded') {
       const label = s.benefits === 'none' ? 'Buy Core Benefits' : 'Upgrade to Expanded';
       const desc = s.benefits === 'none' ? 'Licences + $2.4K/yr of Azure credits.' : 'More licences + $5K/yr Azure credits.';
@@ -71,7 +71,7 @@ export class CompanyScene implements Scene {
       const desc = s.benefitsRenew ? (canStop ? 'Lapses 30 June. SP benefits cover you.' : 'Needs a Solutions Partner designation.') : 'Partner Success renews on 1 July.';
       if (ui.button(162, 204, 150, 12, label, { disabled: s.benefitsRenew && !canStop, colour: s.benefitsRenew ? C.ORANGE : undefined, desc })) say(setBenefitsRenewal(s, !s.benefitsRenew));
     }
-    if (s.unified && ui.button(6, 217, 150, 12, 'Cancel Unified', { colour: C.ORANGE })) say(cancelUnified(s));
+    if (s.unified && ui.button(6, 217, 150, 12, 'Cancel Unified', { colour: C.ORANGE, disabled: s.csp === 'direct', desc: s.csp === 'direct' ? 'Direct Bill partners must keep Unified.' : 'Stop the quarterly Unified charge.' })) say(cancelUnified(s));
     meter(g, 166, 165, 'Morale', s.morale, s.morale < 40 ? C.RED : C.GREEN, 146);
     meter(g, 166, 174, 'Reputation', s.reputation, C.MSBLUE, 146);
     meter(g, 166, 183, 'Compliance', s.compliance, s.compliance < 40 ? C.RED : C.PURPLE, 146);

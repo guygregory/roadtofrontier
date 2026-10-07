@@ -146,6 +146,9 @@ export interface HistoryPoint {
   customers: number;
   staff: number;
   pcs: Record<AreaId, number>;
+  /** CSP billed revenue this quarter ($K), and the Azure part of it. */
+  cloud?: number;
+  cloudAzure?: number;
 }
 
 export type Phase = 'plan' | 'events' | 'hub' | 'ended';

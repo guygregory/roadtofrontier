@@ -22,7 +22,6 @@ export function resumeGame(app: App, s: GameState): void {
 export function planCommitted(app: App): void {
   const s = app.state!;
   const notes = beginQuarter(s);
-  app.autosave();
   app.go(s.pending.length ? new EventScene() : new HubScene());
   const parts: string[] = [];
   if (notes.some((n) => n.includes('renewed for'))) parts.push('PARTNER SUCCESS RENEWED');
@@ -38,7 +37,6 @@ export function eventsDone(app: App): void {
     return;
   }
   s.phase = 'hub';
-  app.autosave();
   app.go(new HubScene());
 }
 
@@ -64,7 +62,6 @@ export function reportDone(app: App): void {
     return;
   }
   beginQuarter(s);
-  app.autosave();
   app.go(s.pending.length ? new EventScene() : new HubScene());
 }
 
@@ -76,6 +73,5 @@ export function yearEndDone(app: App): void {
     return;
   }
   s.phase = 'plan';
-  app.autosave();
   app.go(new PlanScene());
 }

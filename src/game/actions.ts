@@ -19,6 +19,7 @@ import {
   canPurchaseDesignation,
   canStopBenefits,
   creditLimit,
+  directBillGaps,
   frontierAuditChance,
   frontierOffers,
   frontierQualified,
@@ -28,7 +29,7 @@ import {
   referenceChance,
   specQualified,
   specsInArea,
-  totalCustomers,
+  unifiedPrice,
 } from './rules';
 import { potyChance } from './poty';
 import type { GameState } from './types';
@@ -160,20 +161,19 @@ export const ACTIONS: ActionDef[] = [
     title: (s) => (s.csp === 'none' ? 'Join CSP' : 'CSP Direct Bill'),
     icon: 'cart',
     ap: 1,
-    blurb: `Resell Microsoft cloud via an Indirect Provider (${DISTRIBUTOR.company}): licence margin, incentives, co-op funds, full PCS credit for new customers and an account manager. Direct Bill: designation + 60 customers.`,
+    blurb: `Resell Microsoft cloud via ${DISTRIBUTOR.company}: margin, incentives, co-op funds, full PCS credit and an account manager, for 1% of CSP revenue. Direct Bill: $1M/yr, a designation and Unified.`,
     available: (s) => {
       if (s.csp === 'direct') return 'Already a CSP Direct Bill partner';
       if (s.csp === 'indirect') {
-        if (s.designations.length === 0) return 'Already Indirect. Direct Bill needs a designation';
-        const c = totalCustomers(s);
-        if (c < 60) return `Already Indirect. Direct Bill needs 60+ customers (have ${c})`;
+        const gaps = directBillGaps(s);
+        if (gaps.length) return `Direct Bill needs ${gaps[0]}`;
       }
       return null;
     },
     options: (s) =>
       s.csp === 'none'
         ? [
-            { id: 'indirect', label: 'CSP Indirect Reseller', cost: 10, hint: `Via ${DISTRIBUTOR.company}` },
+            { id: 'indirect', label: 'CSP Indirect Reseller', cost: 0, hint: 'No sign-up fee, then 1% of CSP revenue' },
             { id: 'direct', label: 'CSP Direct Bill', cost: 60, disabled: 'Join as an Indirect Reseller first' },
           ]
         : [
@@ -181,21 +181,20 @@ export const ACTIONS: ActionDef[] = [
               id: 'direct',
               label: 'CSP Direct Bill',
               cost: 60,
-              hint: 'Better margins. You leave your distributor',
-              disabled: s.csp === 'direct' ? 'Already Direct Bill' : s.designations.length === 0 ? 'Needs a Solutions Partner designation' : totalCustomers(s) < 60 ? 'Needs 60+ customers' : undefined,
+              hint: 'Better margin, no 1% fee. You leave your distributor',
+              disabled: s.csp === 'direct' ? 'Already Direct Bill' : directBillGaps(s).length ? `Needs ${directBillGaps(s)[0]}` : undefined,
             },
           ],
     apply: (s, opt) => {
       if (opt === 'indirect') {
-        spend(s, 10);
         s.csp = 'indirect';
         const who = s.mpl ? '' : ` ${DISTRIBUTOR.am}, your account manager there, will advise you from now on.`;
-        return `{g}You are now a CSP Indirect Reseller with ${DISTRIBUTOR.company}!{/} Licence margin, incentives and full PCS recognition of new customers.${who}`;
+        return `{g}You are now a CSP Indirect Reseller with ${DISTRIBUTOR.company}!{/} Licence margin, incentives and full PCS recognition of new customers, for 1% of your CSP revenue.${who}`;
       }
       spend(s, 60);
       s.csp = 'direct';
       const who = s.mpl ? '' : ` You buy direct from Microsoft now, so ${DISTRIBUTOR.am} moves on: MAICPP programme emails keep you posted until you join the Managed Partner List.`;
-      return `{g}Upgraded to CSP Direct Bill.{/} Margins and incentives up.${who}`;
+      return `{g}Upgraded to CSP Direct Bill.{/} Better margins and incentives, and no more 1% provider fee.${who}`;
     },
   },
   {
@@ -374,9 +373,9 @@ export const ACTIONS: ActionDef[] = [
     name: 'Unified for Partners',
     icon: 'headset',
     ap: 1,
-    blurb: 'Microsoft support plan for partners: rapid escalation during outages, capacity crunches and failing projects. Improves project success and customer satisfaction. Charged every quarter until cancelled.',
+    blurb: 'Microsoft support plan for partners: rapid escalation during outages, capacity crunches and failing projects. Needed for CSP Direct Bill. Priced on your last 12 months of CSP revenue (min. $5K a month), charged each quarter.',
     available: (s) => (s.unified ? 'Already subscribed (cancel in COMPANY)' : null),
-    options: () => [{ id: 'sub', label: 'Subscribe', cost: 0, hint: `${money(CFG.unifiedCost)}/qtr` }],
+    options: (s) => [{ id: 'sub', label: 'Subscribe', cost: 0, hint: `${money(unifiedPrice(s).quarterly)}/qtr` }],
     apply: (s) => {
       s.unified = true;
       return '{g}Unified for Partners is active.{/} Help is a phone call away.';
@@ -584,6 +583,7 @@ export function repay(s: GameState, amount: number): string {
 }
 
 export function cancelUnified(s: GameState): string {
+  if (s.csp === 'direct') return '{r}Direct Bill partners must keep Unified for Partners.{/}';
   s.unified = false;
   return 'Unified for Partners cancelled.';
 }

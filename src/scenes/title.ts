@@ -5,13 +5,14 @@ import { text } from '../engine/font';
 import { ui } from '../engine/ui';
 import { copperSky, logoSun, mountains, rasterRoad, sineScroller, titleText, twinkleStars } from '../engine/fx';
 import { msLogo } from '../engine/sprites';
-import { loadGame, saveMeta } from '../game/save';
 import { SetupScene } from './setup';
 import { HelpScene } from './help';
-import { HiscoreScene } from './hiscore';
 import { CreditsScene } from './credits';
-import { LoadScene } from './load';
+import { importSave } from './saveio';
 import { resumeGame } from './flow';
+import { clearLegacySaves, legacySave } from '../game/save';
+import { turnLabel } from '../game/format';
+import type { GameState } from '../game/types';
 
 const SCROLL =
   '*** ROAD TO FRONTIER *** GROW YOUR MICROSOFT PARTNER FROM NETWORK MEMBER TO SOLUTIONS PARTNER, SPECIALIZED AND FINALLY FRONTIER PARTNER ... ' +
@@ -21,10 +22,27 @@ const SCROLL =
 
 export class TitleScene implements Scene {
   music = 'title';
+  private legacy: GameState | null = null;
 
   enter(app: App): void {
     // Leaving a game: drop the in-memory state only once we are safely on the title screen.
     app.state = null;
+    this.legacy = legacySave();
+  }
+
+  /** Carry on a game autosaved in the browser by an older version, then forget the old browser saves. */
+  private continueLegacy(app: App): void {
+    const s = this.legacy;
+    if (!s) return;
+    this.legacy = null;
+    clearLegacySaves();
+    app.message(
+      'OLD SAVE FOUND',
+      `Welcome back, ${s.company} (${turnLabel(s.turn)}).\n\nGames are no longer saved in the browser. Use {y}SAVE GAME{/} in the GAME MENU to download a .sav file, and LOAD GAME on the title screen to carry on later.`,
+      'good',
+      'floppy',
+      () => resumeGame(app, s),
+    );
   }
 
   frame(app: App): void {
@@ -44,28 +62,24 @@ export class TitleScene implements Scene {
     text(g, 'A MICROSOFT PARTNER JOURNEY', 160, 88, C.CREAM, { align: 'center', shadow: C.BLACK });
 
     // Menu panel over the road
-    const px = 96;
-    const py = 156;
-    const pw = 128;
-    g.dither(px, py, pw, 80, C.BLACK);
-    g.dither(px, py, pw, 80, C.BLACK, 1);
-    g.frame(px, py, pw, 80, C.MSYELLOW);
-    const auto = saveMeta('auto');
-    const items: [string, boolean, () => void][] = [
-      ['NEW GAME', false, () => app.go(new SetupScene())],
-      [auto ? `CONTINUE ${auto.label}` : 'CONTINUE', !auto, () => {
-        const s = loadGame('auto');
-        if (s) resumeGame(app, s);
-      }],
-      ['LOAD GAME', false, () => app.go(new LoadScene(this))],
-      ['HOW TO PLAY', false, () => app.go(new HelpScene(this))],
-      ['HALL OF FAME', false, () => app.go(new HiscoreScene())],
-      ['CREDITS', false, () => app.go(new CreditsScene())],
+    const items: [string, () => void][] = [
+      ['NEW GAME', () => app.go(new SetupScene())],
+      ...(this.legacy ? [['CONTINUE OLD SAVE', () => this.continueLegacy(app)] as [string, () => void]] : []),
+      ['LOAD GAME (.SAV)', () => importSave(app)],
+      ['HOW TO PLAY', () => app.go(new HelpScene(this))],
+      ['CREDITS', () => app.go(new CreditsScene())],
     ];
-    let y = py + 4;
-    items.forEach(([label, disabled, act], i) => {
-      if (ui.button(px + 3, y, pw - 6, 12, label, { disabled, hotkey: String(i + 1) })) act();
-      y += 12;
+    const px = 96;
+    const pw = 128;
+    const ph = items.length * 17 + 12;
+    const py = 236 - ph;
+    g.dither(px, py, pw, ph, C.BLACK);
+    g.dither(px, py, pw, ph, C.BLACK, 1);
+    g.frame(px, py, pw, ph, C.MSYELLOW);
+    let y = py + 6;
+    items.forEach(([label, act], i) => {
+      if (ui.button(px + 3, y, pw - 6, 14, label, { hotkey: String(i + 1) })) act();
+      y += 17;
     });
 
     sineScroller(g, SCROLL, 238, t, 55, 4, 2);

@@ -7,10 +7,9 @@ import { panel, ui } from '../engine/ui';
 import { icon, msLogo } from '../engine/sprites';
 import { AREA, AreaId } from '../game/data';
 import { money, turnLabel } from '../game/format';
-import { finalScore, resultLabel } from '../game/score';
-import { qualifies, deleteSave } from '../game/save';
+import { finalScore } from '../game/score';
 import { totalCustomers } from '../game/rules';
-import { HiscoreScene } from './hiscore';
+import { ShareScene } from './share';
 import { TitleScene } from './title';
 
 /** Designations held, using the fullest area names that fit the 53-character stats line. */
@@ -24,7 +23,7 @@ function designationList(areas: AreaId[]): string {
 }
 
 export class EndingScene implements Scene {
-  music = '';
+  music: string | undefined = '';
   private parts: Particle[] = [];
   private t0 = -1;
   private stage = 0;
@@ -33,8 +32,9 @@ export class EndingScene implements Scene {
   enter(app: App): void {
     const s = app.state;
     if (!s) return;
-    deleteSave('auto');
     audio.playSong(s.status === 'won' ? 'win' : 'lose');
+    // Coming back from the share screen: keep the ending tune playing.
+    this.music = undefined;
   }
 
   frame(app: App, dt: number): void {
@@ -69,10 +69,8 @@ export class EndingScene implements Scene {
     const s = app.state!;
     const score = finalScore(s);
     text(app.g, `SCORE ${score}`, 160, y, C.YELLOW, { align: 'center', bold: true, shadow: C.BLACK });
-    if (ui.button(110, y + 14, 100, 14, qualifies(score) ? 'HALL OF FAME ►' : 'TITLE ►', { style: 'box' })) {
-      const entry = qualifies(score) ? { score, company: s.company, result: resultLabel(s) } : null;
-      app.go(entry ? new HiscoreScene(entry) : new TitleScene());
-    }
+    if (ui.button(84, y + 14, 74, 14, 'SHARE ►', { style: 'box' })) app.go(new ShareScene(this, score));
+    if (ui.button(162, y + 14, 74, 14, 'TITLE ►', { style: 'box' })) app.go(new TitleScene());
   }
 
   private win(app: App, dt: number, e: number): void {

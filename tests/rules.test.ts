@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { newGame, migrateState } from '../src/game/state';
 import { AREAS, AREA, areaList, areaName, AZURE_ZERO, OFFERS, PDM_CHANGE_REASONS, PDMS, PS_FEE, SPEC, SPECS, FRONTIER } from '../src/game/data';
-import { pcs, canPurchaseDesignation, specRequirements, specQualified, specUnlocked, frontierQualified, frontierRequirements, apMax, azureAllowance } from '../src/game/rules';
+import { pcs, canPurchaseDesignation, specRequirements, specQualified, specUnlocked, frontierQualified, frontierRequirements, apMax, azureAllowance, cspBilled, cspFee, unifiedPrice } from '../src/game/rules';
+import { clearLegacySaves, decodeSave, encodeSave, legacySave, saveFileName } from '../src/game/save';
+import { shareIntentUrl, shareMessage } from '../src/game/share';
 import { beginQuarter, endQuarter, licenceRelief } from '../src/game/sim';
 import {
   ACTION,
@@ -16,6 +18,7 @@ import {
   repay,
   buyBenefits,
   setBenefitsRenewal,
+  cancelUnified,
 } from '../src/game/actions';
 import { advisor, advisorKind, assignFirstPdm, currentPdm, rotatePdm } from '../src/game/advisor';
 import { EVENTS, EVENT, resolveEvent } from '../src/game/events';
@@ -217,7 +220,7 @@ describe('actions', () => {
     expect(res).toMatch(/CSP/);
     expect(s.csp).toBe('indirect');
     expect(s.ap).toBe(ap - 1);
-    expect(s.cash).toBe(cash - 10);
+    expect(s.cash).toBe(cash); // no sign-up fee: the provider takes 1% of CSP revenue instead
   });
   it('refuses actions when out of action points', () => {
     const s = fresh();
@@ -316,18 +319,23 @@ describe('CSP enrolment', () => {
     performAction(s, 'csp', 'indirect');
     expect(s.csp).toBe('indirect');
     s.ap = 3;
-    expect(actionBlocked(s, csp)).toMatch(/Already Indirect/);
+    expect(actionBlocked(s, csp)).toMatch(/Direct Bill needs/);
     expect(csp.options(s).map((o) => o.id)).toEqual(['direct']);
     expect(performAction(s, 'csp', 'indirect')).toMatch(/\{r\}/);
     maxArea(s, 'modern');
     purchaseDesignation(s, 'modern');
-    expect(actionBlocked(s, csp)).toMatch(/60\+ customers/);
-    s.areas.modern.customers = 80;
+    expect(actionBlocked(s, csp)).toMatch(/\$1M CSP rev/);
+    // $1M of CSP billings over the last four quarters
+    s.history = [0, 1, 2, 3].map((turn) => ({ turn, cash: 0, revenue: 0, profit: 0, customers: 0, staff: 0, pcs: s.history[0]?.pcs ?? ({} as never), cloud: 260, cloudAzure: 0 }));
+    expect(actionBlocked(s, csp)).toMatch(/Unified for Partners/);
+    performAction(s, 'unified', 'sub');
     expect(actionBlocked(s, csp)).toBeNull();
     expect(actionTitle(s, csp)).toBe('CSP Direct Bill');
     performAction(s, 'csp', 'direct');
     expect(s.csp).toBe('direct');
     expect(actionBlocked(s, csp)).toMatch(/Direct Bill partner/);
+    expect(cancelUnified(s)).toMatch(/must keep/);
+    expect(s.unified).toBe(true);
   });
   it('blocks any action whose options are all disabled', () => {
     const s = fresh();
@@ -534,6 +542,124 @@ describe('Partner Success benefits', () => {
     expect(licenceRelief(s)).toBe(10);
     s.benefits = 'none';
     expect(licenceRelief(s)).toBe(10);
+  });
+});
+
+describe('.sav files', () => {
+  it('round-trips the game state', () => {
+    const s = fresh();
+    beginQuarter(s);
+    const file = encodeSave(s);
+    expect(file.startsWith('RTFSAV1:')).toBe(true);
+    expect(file).not.toContain('Test Co'); // not readable as plain JSON
+    expect(decodeSave(file)).toEqual(JSON.parse(JSON.stringify(s)));
+  });
+  it('rejects edited, damaged or foreign files', () => {
+    const file = encodeSave(fresh());
+    const body = file.slice(8);
+    const i = Math.floor(body.length / 2);
+    const flipped = body[i] === 'A' ? 'B' : 'A';
+    expect(() => decodeSave('RTFSAV1:' + body.slice(0, i) + flipped + body.slice(i + 1))).toThrow(/modified|damaged/);
+    expect(() => decodeSave('{"company":"x"}')).toThrow(/not a ROAD TO FRONTIER save/);
+    expect(() => decodeSave('RTFSAV1:!!!')).toThrow(/damaged/);
+  });
+  it('names files frontier-YYYY-MM-DD.sav', () => {
+    expect(saveFileName(new Date(2026, 9, 25))).toBe('frontier-2026-10-25.sav');
+    expect(saveFileName(new Date(2027, 0, 5))).toBe('frontier-2027-01-05.sav');
+  });
+  it('offers the newest unfinished browser save from older versions once', () => {
+    const store = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    };
+    try {
+      expect(legacySave()).toBeNull();
+      const a = fresh();
+      a.company = 'Older Co';
+      const b = fresh();
+      b.company = 'Newer Co';
+      b.turn = 5;
+      const done = fresh();
+      done.status = 'lost';
+      store.set('rtf_save_auto', JSON.stringify({ meta: { savedAt: '2026-01-02T00:00:00Z' }, state: a }));
+      store.set('rtf_save_2', JSON.stringify({ meta: { savedAt: '2026-03-04T00:00:00Z' }, state: b }));
+      store.set('rtf_save_3', JSON.stringify({ meta: { savedAt: '2026-09-09T00:00:00Z' }, state: done }));
+      store.set('rtf_save_1', '{broken');
+      store.set('rtf_settings', '{}');
+      expect(legacySave()?.company).toBe('Newer Co');
+      clearLegacySaves();
+      expect(legacySave()).toBeNull();
+      expect([...store.keys()]).toEqual(['rtf_settings']);
+    } finally {
+      delete (globalThis as { localStorage?: unknown }).localStorage;
+    }
+  });
+});
+
+describe('sharing', () => {
+  it('pre-writes a post with the score, company, outcome, difficulty, link and hashtag', () => {
+    const s = fresh();
+    s.status = 'won';
+    s.endKind = 'frontier';
+    s.flags.endTurn = 13;
+    s.difficulty = 'hard';
+    const msg = shareMessage(s, 23450);
+    expect(msg).toContain('Test Co');
+    expect(msg).toContain('Frontier Partner');
+    expect(msg).toContain('23450');
+    expect(msg).toContain('Hard difficulty');
+    expect(msg).toContain('https://aka.ms/roadtofrontier');
+    expect(msg).toContain('#roadtofrontier');
+    expect([...msg].length).toBeLessThan(280);
+    s.status = 'lost';
+    s.endKind = 'bankrupt';
+    expect(shareMessage(s, 900)).toMatch(/ran out of cash/);
+    expect(shareIntentUrl('x', msg)).toBe('https://x.com/intent/post?text=' + encodeURIComponent(msg));
+    expect(shareIntentUrl('linkedin', msg)).toContain('linkedin.com');
+    expect(decodeURIComponent(shareIntentUrl('linkedin', msg).split('text=')[1])).toBe(msg);
+  });
+});
+
+describe('CSP economics and Unified for Partners', () => {
+  const t12 = (s: GameState, total: number, azure: number) => {
+    s.history = [0, 1, 2, 3].map((turn) => ({ turn, cash: 0, revenue: 0, profit: 0, customers: 0, staff: 0, pcs: {} as never, cloud: total / 4, cloudAzure: azure / 4 }));
+  };
+  it('charges Indirect Resellers 1% of billed CSP revenue, and Direct Bill nothing', () => {
+    const s = fresh();
+    s.areas.modern.customers = 50;
+    expect(cspBilled(s).total).toBe(0);
+    s.csp = 'indirect';
+    const billed = cspBilled(s).total;
+    expect(billed).toBeGreaterThan(0);
+    expect(cspFee(s)).toBeCloseTo(billed * 0.01, 1);
+    s.csp = 'direct';
+    expect(cspFee(s)).toBe(0);
+  });
+  it('records billed CSP revenue in the quarter history', () => {
+    const s = fresh();
+    s.csp = 'indirect';
+    beginQuarter(s);
+    endQuarter(s);
+    expect(s.history[s.history.length - 1].cloud).toBeGreaterThan(0);
+  });
+  it('prices Unified at a $5K/month floor, then a % of trailing-12-month CSP revenue', () => {
+    const s = fresh();
+    expect(unifiedPrice(s).quarterly).toBe(15);
+    t12(s, 1200, 600); // $1.2M: Category A, 4% Azure + 3% other = $42K/yr -> floor
+    expect(unifiedPrice(s).quarterly).toBe(15);
+    expect(unifiedPrice(s).cat).toBe('A');
+    t12(s, 4000, 2000); // 4% x 2000 + 3% x 2000 = $140K/yr
+    expect(unifiedPrice(s).quarterly).toBe(35);
+    t12(s, 60000, 60000); // Category B: 3% Azure
+    expect(unifiedPrice(s).cat).toBe('B');
+    expect(unifiedPrice(s).annual).toBeCloseTo(1800);
+    t12(s, 200000, 0); // Category C: 1.5% non-Azure
+    expect(unifiedPrice(s).annual).toBeCloseTo(3000);
+    t12(s, 600000, 300000); // Category D: 1.5% / 1%
+    expect(unifiedPrice(s).cat).toBe('D');
+    expect(unifiedPrice(s).annual).toBeCloseTo(7500);
   });
 });
 

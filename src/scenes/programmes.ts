@@ -7,6 +7,7 @@ import { AREA, AREAS, AreaId, BETS, LEVEL_NAMES, PROGRAMMES, ProgrammeId } from 
 import { money } from '../game/format';
 import { forecastCosts, lastRevenue, overheadCost, programmeCost, offerDevCost } from '../game/sim';
 import { CFG } from '../game/data';
+import { cspFee, unifiedCost } from '../game/rules';
 import { background, footer, header, requireState } from './common';
 import { HubScene } from './hub';
 
@@ -54,16 +55,11 @@ export class ProgrammesScene implements Scene {
     const fy = 32 + 4 * 18;
     text(g, `Primary: {y}${AREA[s.focus.primary].mid}{/}`, 6, fy, C.LSLATE);
     text(g, `Secondary: {c}${s.focus.secondary ? AREA[s.focus.secondary].mid : 'none'}{/}`, 6, fy + 10, C.LSLATE);
-    if (ui.button(222, fy, 92, 14, 'SWAP 2ND', { style: 'box', desc: 'Change your secondary focus area (costs one adjustment). The primary area is fixed for the year.' })) {
-      if (s.adjustments <= 0) {
-        audio.sfx('error');
-        app.toast('No adjustments left this quarter');
-      } else {
-        const opts: (AreaId | null)[] = [null, ...AREAS.filter((a) => a !== s.focus.primary)];
-        const idx = opts.indexOf(s.focus.secondary);
-        s.focus.secondary = opts[(idx + 1) % opts.length];
-        s.adjustments--;
-      }
+    if (ui.button(222, fy, 92, 14, 'SWAP 2ND', { style: 'box', desc: 'Change your secondary focus area (free - no adjustment needed). The primary area is fixed for the year.' })) {
+      const opts: (AreaId | null)[] = [null, ...AREAS.filter((a) => a !== s.focus.primary)];
+      const idx = opts.indexOf(s.focus.secondary);
+      s.focus.secondary = opts[(idx + 1) % opts.length];
+      audio.sfx('move');
     }
 
     // Forecast
@@ -73,12 +69,13 @@ export class ProgrammesScene implements Scene {
       ['Overheads', overheadCost(s)],
       ['Programmes', programmeCost(s)],
       ['Offer dev.', offerDevCost(s)],
-      ['Unified', s.unified ? CFG.unifiedCost : 0],
+      ['Unified', unifiedCost(s)],
+      ['CSP fee (1%)', cspFee(s)],
       ['Interest/other', s.debt * CFG.interest + (s.flags.dividends ?? 0) + (s.flags.integration ? 20 : 0)],
     ];
     rows.forEach(([l, v], i) => {
-      text(g, l, 8, 150 + i * 10, C.LSLATE);
-      text(g, money(v), 154, 150 + i * 10, C.WHITE, { align: 'right' });
+      text(g, l, 8, 149 + i * 9, C.LSLATE);
+      text(g, money(v), 154, 149 + i * 9, C.WHITE, { align: 'right' });
     });
     const total = forecastCosts(s);
     const rev = lastRevenue(s);

@@ -1,4 +1,4 @@
-// Second smoke pass: year-end, endings, hall of fame, help and credits.
+// Second smoke pass: year-end, endings, sharing, help and credits.
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 
@@ -97,16 +97,35 @@ await shot('ending-gameover');
 await wait(500);
 await key('Enter');
 await wait(800);
-await shot('hiscore-entry');
-await page.keyboard.type('GRG');
-await wait(200);
-await key('Enter');
+await shot('share-from-ending');
+// Share screen: stub window.open and capture the downloaded result card
+await page.evaluate(() => {
+  window.__opened = [];
+  window.open = (u) => (window.__opened.push(u), null);
+});
+await page.evaluate(() => window.__rtf.go(new window.__rtfScenes.ShareScene(window.__rtf.scene, 12345)));
+await wait(600);
+await shot('share');
+const box = await page.locator('#screen').boundingBox();
+const clickG = (x, y) => page.mouse.click(box.x + (x * box.width) / 320, box.y + (y * box.height) / 256);
+const dl = page.waitForEvent('download');
+await clickG(40, 229); // LINKEDIN
+const card = await dl;
+await card.saveAs(`${out}/share-card.png`);
+console.log('share download', card.suggestedFilename());
+console.log('opened', await page.evaluate(() => window.__opened));
 await wait(500);
-await shot('hiscore-table');
+await shot('share-dialog');
+await key('Enter');
+await wait(400);
 await key('Escape');
+await wait(600);
+await key('Escape');
+await page.evaluate(() => window.__rtf.go(new window.__rtfScenes.TitleScene()));
 await wait(800);
+await shot('title-menu');
 // Help & credits from title
-await key('ArrowDown', 3);
+await key('ArrowDown', 2);
 await key('Enter');
 await wait(600);
 await shot('help-1');
@@ -115,7 +134,7 @@ await wait(300);
 await shot('help-4');
 await key('Escape');
 await wait(700);
-await key('ArrowDown', 5);
+await key('ArrowDown', 3);
 await key('Enter');
 await wait(4000);
 await shot('credits');

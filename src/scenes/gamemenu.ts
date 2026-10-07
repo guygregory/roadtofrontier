@@ -3,7 +3,8 @@ import { audio } from '../engine/audio';
 import { C } from '../engine/palette';
 import { text } from '../engine/font';
 import { panel, ui } from '../engine/ui';
-import { saveGame, saveMeta } from '../game/save';
+import { saveFileName } from '../game/save';
+import { exportSave, importSave } from './saveio';
 import { background, footer, header, keyHint, requireState } from './common';
 import { HubScene } from './hub';
 import { HelpScene } from './help';
@@ -25,15 +26,18 @@ export class GameMenuScene implements Scene {
       y += 15;
     };
     row('RESUME', () => app.go(new HubScene()));
-    for (const slot of ['1', '2', '3'] as const) {
-      const m = saveMeta(slot);
-      row(`SAVE TO SLOT ${slot}`, () => {
-        if (saveGame(s, slot)) {
-          app.toast(`Saved to slot ${slot}`);
-          audio.sfx('coin');
-        } else app.toast('Could not save (storage unavailable)');
-      }, m ? `${m.company.slice(0, 10)} ${m.label}` : 'empty');
-    }
+    row('SAVE GAME', () => exportSave(app), app.hasUnsavedProgress() ? 'download .sav' : 'saved');
+    row('LOAD GAME', () => {
+      const load = () => importSave(app);
+      if (!app.hasUnsavedProgress()) load();
+      else
+        app.dialog({
+          title: 'LOAD GAME?',
+          text: 'Load a .sav file? Progress since your last save will be lost.',
+          icon: 'door',
+          buttons: [{ label: 'CHOOSE FILE', action: load }, { label: 'CANCEL' }],
+        });
+    }, 'open .sav');
     row(`MUSIC: ${app.settings.music ? 'ON' : 'OFF'}`, () => {
       app.settings.music = !app.settings.music;
       audio.setMusic(app.settings.music);
@@ -52,18 +56,31 @@ export class GameMenuScene implements Scene {
     row('FULLSCREEN', () => toggleFullscreen());
     row('HOW TO PLAY', () => app.go(new HelpScene(this)));
     row('QUIT TO TITLE', () =>
-      app.dialog({
-        title: 'QUIT?',
-        text: 'Return to the title screen? Your progress is autosaved at the start of each quarter - use CONTINUE to pick it up again.',
-        icon: 'door',
-        buttons: [
-          {
-            label: 'YES, QUIT',
-            action: () => app.go(new TitleScene()),
-          },
-          { label: 'NO' },
-        ],
-      }),
+      app.dialog(
+        app.hasUnsavedProgress()
+          ? {
+              title: 'QUIT?',
+              text: `Return to the title screen? Progress since your last save will be lost.\n\nSAVE & QUIT downloads {y}${saveFileName()}{/} first - use LOAD GAME on the title screen to carry on later.`,
+              icon: 'door',
+              buttons: [
+                {
+                  label: 'SAVE & QUIT',
+                  action: () => {
+                    exportSave(app);
+                    app.go(new TitleScene());
+                  },
+                },
+                { label: 'QUIT', action: () => app.go(new TitleScene()) },
+                { label: 'CANCEL' },
+              ],
+            }
+          : {
+              title: 'QUIT?',
+              text: 'Return to the title screen? Your game is saved - use LOAD GAME on the title screen to carry on later.',
+              icon: 'door',
+              buttons: [{ label: 'YES, QUIT', action: () => app.go(new TitleScene()) }, { label: 'NO' }],
+            },
+      ),
     );
     text(g, `${s.company} - ${s.difficulty.toUpperCase()}`, 160, 222, C.LSLATE, { align: 'center' });
     if (ui.back()) app.go(new HubScene());

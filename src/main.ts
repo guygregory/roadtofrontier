@@ -7,9 +7,9 @@ import { ui } from './engine/ui';
 import { loadSettings } from './game/save';
 import { BootScene } from './scenes/boot';
 import { toggleFullscreen } from './fullscreen';
+import { ShareScene } from './scenes/share';
 import { EndingScene } from './scenes/ending';
 import { YearEndScene } from './scenes/yearend';
-import { HiscoreScene } from './scenes/hiscore';
 import { HelpScene } from './scenes/help';
 import { CreditsScene } from './scenes/credits';
 import { TitleScene } from './scenes/title';
@@ -60,7 +60,7 @@ app.go(new BootScene(), true);
 (window as unknown as { __rtf: App; __rtfScenes: unknown }).__rtf = app;
 (window as unknown as { __rtfUi: unknown }).__rtfUi = ui;
 (window as unknown as { __rtfAudio: unknown }).__rtfAudio = audio;
-(window as unknown as { __rtfScenes: unknown }).__rtfScenes = { EndingScene, YearEndScene, HiscoreScene, HelpScene, CreditsScene, TitleScene, HubScene, PlanScene, ActionsScene, CompanyScene, EventScene };
+(window as unknown as { __rtfScenes: unknown }).__rtfScenes = { EndingScene, YearEndScene, HelpScene, CreditsScene, TitleScene, HubScene, PlanScene, ActionsScene, CompanyScene, EventScene, ShareScene };
 
 let last = performance.now();
 function loop(now: number): void {
@@ -91,6 +91,11 @@ function loop(now: number): void {
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+// Exported .sav files are the only saves, so warn before closing the tab mid-game.
+window.addEventListener('beforeunload', (e) => {
+  if (app.hasUnsavedProgress()) e.preventDefault();
+});
 
 document.addEventListener('visibilitychange', () => {
   last = performance.now();

@@ -45,6 +45,7 @@ export const PAGES: { title: string; icon: string; body: string }[] = [
     icon: 'coin',
     body:
       'Revenue comes from services (limited by engineer {y}capacity{/}), repeatable offers, CSP licence margin and incentives. Keep {y}utilisation{/} under 100% or projects fail and customers leave.\n\n' +
+      '{c}CSP{/} has no sign-up fee: your distributor keeps 1% of CSP revenue. {c}Direct Bill{/} keeps it all, but needs $1M CSP revenue in 12 months, a designation and {c}Unified for Partners{/}.\n\n' +
       'Certifications belong to people: when engineers leave, their certs go with them. Keep {y}morale{/} up!\n\n' +
       'Keep {y}compliance{/} high. Shortcuts may pay now but audits can remove your membership.',
   },
@@ -62,11 +63,11 @@ export const PAGES: { title: string; icon: string; body: string }[] = [
     body:
       '• Join {c}CSP{/} early: margin, incentives, co-op funds, full PCS credit.\n' +
       '• Invest in {c}skilling{/} - certifications drive PCS, audits and project success.\n' +
-      '• Spend {c}co-op funds{/} on events before they expire at year end.\n' +
-      '• Claim {c}partner incentives{/} for funded workshops.\n' +
-      '• Build {c}repeatable offers{/} and co-sell with Microsoft account teams.\n' +
+      '• Spend {c}co-op funds{/} before year end; claim {c}incentives{/}.\n' +
+            '• Build {c}repeatable offers{/} and co-sell with Microsoft account teams.\n' +
       '• Be {c}customer zero{/} for Copilot and Azure.\n' +
-      '• {c}Unified for Partners{/} softens outages and failing projects.\n\n' +
+      '• {c}Unified for Partners{/} softens outages and failing projects.\n' +
+      '• {c}Save{/} from the GAME MENU: a .sav file download.\n\n' +
       'Controls: mouse, or arrows/WASD + Enter, Esc to go back. Tab/Shift+Tab switch Partner Center tabs. M = music, F = fullscreen.',
   },
 ];

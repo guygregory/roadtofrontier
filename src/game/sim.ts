@@ -1,4 +1,4 @@
-import { AREA, AREAS, AreaId, areaName, AZURE_ZERO, CFG, OFFER, PROGRAMMES, PS_FEE, SPEC } from './data';
+import { AREA, AREAS, AreaId, areaName, AZURE_ZERO, CFG, CSP, OFFER, PROGRAMMES, PS_FEE, SPEC } from './data';
 import { credits, fyOf, money, qOf, turnLabel } from './format';
 import { rollEvents } from './events';
 import { advisor, assignFirstPdm, currentPdm, rotatePdm } from './advisor';
@@ -26,6 +26,8 @@ import {
   azureAllowance,
   canStopBenefits,
   creditLimit,
+  cspBilled,
+  cspFee,
   hasDesignation,
   pcs,
   publishedOffers,
@@ -37,6 +39,7 @@ import {
   totalCerts,
   totalCustomers,
   apMax,
+  unifiedCost,
 } from './rules';
 import { binomial, rand, randInt, stochasticRound } from './rng';
 import { emptyBoosts } from './state';
@@ -83,7 +86,8 @@ export function forecastCosts(s: GameState): number {
     s.sales * CFG.salesCost +
     overheadCost(s) +
     programmeCost(s) +
-    (s.unified ? CFG.unifiedCost : 0) +
+    unifiedCost(s) +
+    cspFee(s) +
     s.debt * CFG.interest +
     (s.flags.dividends ?? 0) +
     offerDevCost(s) +
@@ -349,11 +353,13 @@ export function endQuarter(s: GameState): QuarterReport {
   }
 
   // --- Revenue
-  const keys = s.key.length;
   let csp = 0;
   let incentives = 0;
+  const billed = cspBilled(s);
+  // Indirect Resellers pay their Indirect Provider 1% of billed cloud; Direct Bill keeps it.
+  const fee = s.csp === 'indirect' ? billed.total * CSP.indirectFee : 0;
   if (s.csp !== 'none') {
-    csp = (0.6 * smallCount + 3 * keys) * (s.csp === 'direct' ? 1.6 : 1) * (down ? 0.9 : 1);
+    csp = billed.total * CSP.margin[s.csp];
     incentives = 0.25 * totalCustomers(s) * (1 + 0.25 * nDes) * (s.csp === 'direct' ? 1.3 : 1) * (hasMod(s, 'incentiveBoost') ? 1.5 : 1);
   }
   const revenue = services + offerRev + csp + incentives;
@@ -370,7 +376,7 @@ export function endQuarter(s: GameState): QuarterReport {
     s.azureCredits = Math.round((s.azureCredits - azureUsed) * 10) / 10;
     azureCash = AZURE_ZERO.runCost - azureUsed;
   }
-  const other = (s.unified ? CFG.unifiedCost : 0) + (s.flags.dividends ?? 0) + offerDevCost(s) + (s.flags.integration ? 20 : 0) + azureCash;
+  const other = unifiedCost(s) + fee + (s.flags.dividends ?? 0) + offerDevCost(s) + (s.flags.integration ? 20 : 0) + azureCash;
   if (s.flags.integration) s.flags.integration = Math.max(0, s.flags.integration - 1);
   const costs = salaries + overhead + progCost + interest + other;
   const profit = revenue - costs;
@@ -530,7 +536,7 @@ export function endQuarter(s: GameState): QuarterReport {
 
   // --- History & stats
   const pcsNow = allPcs(s);
-  s.history.push({ turn: s.turn, cash: Math.round(s.cash), revenue: Math.round(revenue), profit: Math.round(profit), customers: totalCustomers(s), staff: s.tech + s.sales, pcs: pcsNow });
+  s.history.push({ turn: s.turn, cash: Math.round(s.cash), revenue: Math.round(revenue), profit: Math.round(profit), customers: totalCustomers(s), staff: s.tech + s.sales, pcs: pcsNow, cloud: Math.round(billed.total), cloudAzure: Math.round(billed.azure) });
   s.stats.peakRevenue = Math.max(s.stats.peakRevenue, revenue);
 
   const report: QuarterReport = {

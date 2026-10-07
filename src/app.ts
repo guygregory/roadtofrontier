@@ -7,7 +7,7 @@ import { audio, gameSong } from './engine/audio';
 import { C } from './engine/palette';
 import { fyOf } from './game/format';
 import type { GameState } from './game/types';
-import { saveGame, saveSettings, Settings } from './game/save';
+import { saveSettings, Settings } from './game/save';
 
 export interface Scene {
   /** Song to play while this scene is active ('' = silence, undefined = keep current). */
@@ -41,6 +41,7 @@ export class App {
   dialogs: Dialog[] = [];
   toastMsg = '';
   toastT = 0;
+  private savedSnapshot = '';
 
   constructor(
     public g: Gfx,
@@ -87,8 +88,15 @@ export class App {
     this.toastT = 2.5;
   }
 
-  autosave(): void {
-    if (this.state && this.state.status === 'playing') saveGame(this.state, 'auto');
+  /** Ask before leaving the page with a game that hasn't been exported to a .sav file. */
+  hasUnsavedProgress(): boolean {
+    const s = this.state;
+    return !!s && s.status === 'playing' && JSON.stringify(s) !== this.savedSnapshot;
+  }
+
+  /** Remember the state as it was saved (or loaded), so we can tell if there is unsaved progress. */
+  markSaved(): void {
+    this.savedSnapshot = this.state ? JSON.stringify(this.state) : '';
   }
 
   persistSettings(): void {

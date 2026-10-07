@@ -7,6 +7,9 @@ import { msLogo } from '../engine/sprites';
 import { TitleScene } from './title';
 
 const LINES = [
+  'Created with {m}love{/} by',
+  '{y}GUY GREGORY & GITHUB COPILOT',
+  '',
   '{y}ROAD TO FRONTIER',
   '',
   'An Amiga-style tribute to the',

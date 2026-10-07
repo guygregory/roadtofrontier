@@ -272,7 +272,8 @@ export const CFG = {
   cosellConv: [0, 0.05, 0.1, 0.15],
   cosellRefs: [0, 0.8, 1.6, 2.6],
   peopleMorale: [-3, 1, 3, 5],
-  unifiedCost: 15,
+  /** Unified for Partners floor: $5K a month. */
+  unifiedFloor: 15,
   interest: 0.025,
   designationFee: 6,
   offerBuildCost: 35,
@@ -281,6 +282,33 @@ export const CFG = {
   /** Wins before the end of FY31 (turn 20) earn a speed bonus; play itself has no time limit. */
   speedTurns: 20,
 };
+
+// ---------------------------------------------------------------------------
+// CSP: Microsoft cloud resold to customers. Revenue figures are what customers are billed ($K/qtr);
+// the partner keeps a margin, and an Indirect Reseller pays its Indirect Provider a share.
+
+export const CSP = {
+  /** Billed cloud per quarter for each small customer / key account, before any downturn. */
+  billedPerCustomer: 6,
+  billedPerKey: 30,
+  /** Partner margin on billed cloud (Direct Bill buys at a better price and keeps more). */
+  margin: { indirect: 0.1, direct: 0.16 },
+  /** Indirect Provider fee for Indirect Resellers: 1% of billed cloud revenue. */
+  indirectFee: 0.01,
+  /** Direct Bill: trailing-12-month CSP revenue of at least $1M (Partner Center requirement). */
+  directRevenue: 1000,
+};
+
+/**
+ * Unified for Partners pricing (annual, % of trailing-12-month CSP billed revenue), with a $5K/month floor.
+ * Revenue below Category A's $1M is charged at the floor.
+ */
+export const UNIFIED_TIERS: { cat: string; min: number; azure: number; other: number }[] = [
+  { cat: 'D', min: 500000, azure: 0.015, other: 0.01 },
+  { cat: 'C', min: 100000, azure: 0.02, other: 0.015 },
+  { cat: 'B', min: 50000, azure: 0.03, other: 0.02 },
+  { cat: 'A', min: 0, azure: 0.04, other: 0.03 },
+];
 
 // ---------------------------------------------------------------------------
 // Partner benefits: yearly Azure bulk credits ($K), per the MAICPP Benefits Guide (July 2026).

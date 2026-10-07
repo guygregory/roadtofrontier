@@ -23,8 +23,15 @@ Web Audio, with a new in-game tune every financial year. No game engine and no b
 - **Partner Center**: ↑/↓ pick a designation or specialization, ←/→ switch between the
   list and the audit booking buttons, **Tab** / **Shift+Tab** switch between the
   Solutions Partner, Specializations and Frontier tabs.
-- Progress is autosaved at the start of every quarter. Use **CONTINUE** on the title
-  screen, or save to one of three slots from the in-game **GAME MENU**.
+- **Saving**: choose **SAVE GAME** in the in-game **GAME MENU** to download your progress as a
+  .sav file (named like rontier-2026-10-25.sav). Use **LOAD GAME (.SAV)** on the title
+  screen, or LOAD GAME in the game menu, to carry on. Save files are checksummed and lightly
+  scrambled, so edited files are rejected. Nothing is saved in the browser except settings,
+  and the game warns you before closing the tab or quitting with unsaved progress.
+- **Sharing**: when the game ends, choose **SHARE** to post your result to **LinkedIn** or
+  **X**. The game writes the post for you (score, partner name, outcome, difficulty, a link
+  to <https://aka.ms/roadtofrontier> and **#roadtofrontier**), copies it to your clipboard and
+  downloads a 1280×672 pixel-art result card (rontier-result-YYYY-MM-DD.png) to attach.
 
 ### The journey
 
@@ -37,6 +44,7 @@ year after year, until you win or lose. Winning sooner earns a bigger score.
    people) and Partner Success Core/Expanded benefits. Partner Success renews when you
    confirm the plan; once you hold a Solutions Partner designation you can switch the
    renewal off, because Solutions Partner benefits exceed it.
+   Swapping your secondary focus during the year is free and does not use a change.
 2. **Each quarter**:
    - Handle incoming **events** (incidents, opportunities, tricky decisions and their
      delayed consequences).
@@ -100,7 +108,8 @@ planning the new year, and the FY briefing shows its title.
 | Solutions Partner designations (6 areas) | Purchase your first one when qualified; later areas enrol automatically. They renew yearly and only if you still score 70+. |
 | Specializations | Unlock only under the designations they align to. They need more certs, deployments and customers, then a third-party audit, a customer reference or automatic enrolment (Business Applications). |
 | Frontier Partner specialization | Needs Microsoft 365 Copilot, Data Security, Identity & Access Management, and AI Apps OR AI Platform specializations, plus 5 Frontier Transformation Engineers, 3 DP-600 holders and a passed audit. |
-| CSP | Joining as an Indirect Reseller (through an Indirect Provider) adds licence margin, incentives and co-op funds, and makes every new customer count in PCS. Direct Bill needs a designation. |
+| CSP | Joining as an Indirect Reseller (through an Indirect Provider) is free to sign up: the provider keeps **1% of your CSP revenue**. It adds licence margin, incentives and co-op funds, and makes every new customer count in PCS. Moving to **Direct Bill** wins back the 1% and a better margin, but (as in the real [Direct Bill requirements](https://learn.microsoft.com/partner-center/enroll/direct-partner-new-requirements)) needs **$1M of CSP revenue in the last 12 months**, a **Solutions Partner designation** and **Unified for Partners** (which you must then keep). |
+| Unified for Partners | Priced like the real support plan: **$5K a month minimum**, otherwise a share of trailing-12-month CSP revenue - Category A ($1M-50M) 4% Azure / 3% non-Azure, B ($50M-100M) 3% / 2%, C ($100M-500M) 2% / 1.5%, D ($500M+) 1.5% / 1%. |
 | Partner benefits & Azure credits | Yearly Azure bulk credits follow the MAICPP Benefits Guide (July 2026): Partner Success Core $2.4K / Expanded $5K; each Solutions Partner designation $4K (Business Applications, Modern Work) or $10K (Azure areas, Security); each specialization $14K (Azure, max 5), $6K (Business Applications or Modern Work, max 3) or $10K (Security, max 3), only with Solutions Partner benefits. Credits are granted on 1 July (or when a benefit is earned) and expire on 30 June. |
 | Partner Success vs Solutions Partner | Their internal-use licences overlap rather than stack, so once you hold a designation Partner Success only adds its Azure credits, and you can stop renewing it. |
 
@@ -129,11 +138,12 @@ Optional headless smoke tests (need Microsoft Edge or Chrome installed, plus a r
 
 ```bash
 node scripts/smoke.mjs    # new game -> plan -> events -> hub -> screens -> quarter report
-node scripts/smoke2.mjs   # year end, endings, hall of fame, help, credits
+node scripts/smoke2.mjs   # year end, endings, sharing (LinkedIn/X, result card), title menu, help, credits
 node scripts/smoke3.mjs   # plays quarter after quarter through the UI, past FY31, checking for runtime errors
 node scripts/smoke4.mjs   # late-game screens (designations, specializations, charts)
 node scripts/smoke5.mjs   # advisors, CSP after enrolling, Azure credits & customer zero, Partner Success renewal, FY32
 node scripts/smoke6.mjs   # Partner Center keys, area names, PDM portraits and changes, a tune per FY
+node scripts/smoke7.mjs   # .sav export from the game menu, quit warning, tampered and valid .sav import
 ```
 
 Screenshots are written to `screenshots/`. `smoke6.mjs` also renders each FY tune offline,
@@ -147,10 +157,12 @@ src/
             audio (chiptune synth + songs), fx (copper sky, raster road, scroller, particles)
   game/     data (areas, specializations, offers, benefits, constants), rules (PCS, requirements, Azure
             credits), sim (quarter resolution), events, actions, advisor (who advises you), poty, ops,
-            state, save, score, bot (balance-testing AI)
+            state, save (.sav encode/decode), share (post text and links), score, bot (balance-testing AI)
   scenes/   boot, title, setup, plan, event, hub, actions, programmes, partnercenter, company,
-            customers, reports, report, yearend, ending, hiscore, help, credits, load, gamemenu
-tests/      rules.test.ts (rules, simulation, actions, events, benefits, advisors, PDMs, area names),
+            customers, reports, report, yearend, ending, share, saveio, help, credits, gamemenu
+  sharecard.ts (result card image), files.ts (download / file picker helpers)
+tests/      rules.test.ts (rules, simulation, actions, events, benefits, advisors, PDMs, area names,
+            CSP fees and Unified pricing, .sav files, share text),
             balance.test.ts (bot simulations), text.test.ts (on-screen text fits its panels),
             music.test.ts (songs are well formed and in key)
 ```
@@ -170,8 +182,7 @@ fully unit-testable without a browser.
 
 ## Credits & notes
 
-Design, code, pixel art and music by the ROAD TO FRONTIER team, with love for the
-Amiga demoscene. The Microsoft four-square logo and colours are redrawn as pixel art.
+Created with love by **Guy Gregory** and **GitHub Copilot**, as a tribute to the Amiga demoscene. The Microsoft four-square logo and colours are redrawn as pixel art.
 Customer names are Microsoft's well-known fictitious companies (Contoso, Fabrikam,
 Northwind Traders…). This is a fan-made learning game, not an official Microsoft
 product.

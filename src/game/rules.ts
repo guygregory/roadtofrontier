@@ -1,4 +1,5 @@
-import { AREA, AREAS, AreaId, areaList, AZURE_CREDITS, CreditCategory, creditCategory, FRONTIER, OFFER, PCS_QUALIFY, PCS_WEIGHTS, SPEC, SpecDef } from './data';
+import { AREA, AREAS, AreaId, areaList, AZURE_CREDITS, CFG, CreditCategory, creditCategory, CSP, FRONTIER, OFFER, PCS_QUALIFY, PCS_WEIGHTS, SPEC, SpecDef, UNIFIED_TIERS } from './data';
+import { money } from './format';
 import type { GameState } from './types';
 
 export const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
@@ -209,6 +210,57 @@ export function totalCerts(s: GameState): { inter: number; adv: number } {
 
 export function totalCustomers(s: GameState): number {
   return AREAS.reduce((n, a) => n + s.areas[a].customers, 0) + s.key.length;
+}
+
+// ---------------------------------------------------------------------------
+// CSP billed revenue and Unified for Partners pricing
+
+/** Microsoft cloud billed through CSP this quarter ($K), split into Azure and non-Azure. */
+export function cspBilled(s: GameState): { total: number; azure: number } {
+  if (s.csp === 'none') return { total: 0, azure: 0 };
+  const down = s.modifiers.some((m) => m.id === 'downturn' && m.until >= s.turn) ? 0.9 : 1;
+  let total = 0;
+  let azure = 0;
+  for (const a of AREAS) {
+    const v = (s.areas[a].customers * CSP.billedPerCustomer + s.key.filter((k) => k.area === a).length * CSP.billedPerKey) * down;
+    total += v;
+    if (AREA[a].azure) azure += v;
+  }
+  return { total, azure };
+}
+
+/** CSP billed revenue over the last four completed quarters ($K). */
+export function trailingCloud(s: GameState): { total: number; azure: number } {
+  const last = s.history.slice(-4);
+  return { total: sum(last.map((h) => h.cloud ?? 0)), azure: sum(last.map((h) => h.cloudAzure ?? 0)) };
+}
+
+/** Unified for Partners category and quarterly price, from trailing-12-month CSP revenue. */
+export function unifiedPrice(s: GameState): { cat: string; annual: number; quarterly: number; floor: boolean } {
+  const { total, azure } = trailingCloud(s);
+  const tier = UNIFIED_TIERS.find((t) => total >= t.min)!;
+  const pct = azure * tier.azure + (total - azure) * tier.other;
+  const annual = Math.max(CFG.unifiedFloor * 4, pct);
+  return { cat: total >= 1000 ? tier.cat : '-', annual, quarterly: Math.round((annual / 4) * 10) / 10, floor: pct <= CFG.unifiedFloor * 4 };
+}
+
+export function unifiedCost(s: GameState): number {
+  return s.unified ? unifiedPrice(s).quarterly : 0;
+}
+
+/** Indirect Provider fee this quarter: 1% of billed cloud for Indirect Resellers. */
+export function cspFee(s: GameState): number {
+  return s.csp === 'indirect' ? Math.round(cspBilled(s).total * CSP.indirectFee * 10) / 10 : 0;
+}
+
+/** What still stands between an Indirect Reseller and CSP Direct Bill (empty = eligible). */
+export function directBillGaps(s: GameState): string[] {
+  const gaps: string[] = [];
+  const t12 = trailingCloud(s).total;
+  if (t12 < CSP.directRevenue) gaps.push(`$1M CSP rev/yr (${money(t12)})`);
+  if (s.designations.length === 0) gaps.push('a Solutions Partner designation');
+  if (!s.unified) gaps.push('Unified for Partners');
+  return gaps;
 }
 
 export function staff(s: GameState): number {

@@ -65,7 +65,7 @@ export function drawReportPage(g: Gfx, r: QuarterReport, page: number): void {
       ['Salaries', r.costs.salaries],
       ['Overheads', r.costs.overhead],
       ['Programmes', r.costs.programmes],
-      ['Unified/offers/etc', r.costs.other],
+      ['Unified/fees/etc', r.costs.other],
       ['Interest', r.costs.interest],
     ];
     cost.forEach(([l, v], i) => {

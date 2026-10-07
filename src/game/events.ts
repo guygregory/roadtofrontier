@@ -1,6 +1,6 @@
-import { AREA, AREAS, AreaId, AZURE_ZERO, CFG, DIFFICULTY, DISTRIBUTOR, PDM_NAME, RIVAL_NAMES } from './data';
+import { AREA, AREAS, AreaId, AZURE_ZERO, CFG, DIFFICULTY, DISTRIBUTOR, RIVAL_NAMES } from './data';
 import { credits, money } from './format';
-import { advisorKind, byAdvisor } from './advisor';
+import { advisorKind, byAdvisor, currentPdm } from './advisor';
 import {
   addCerts,
   addMod,
@@ -58,7 +58,7 @@ const pctTxt = (p: number) => `${Math.round(p * 100)}%`;
 function loseKeyText(s: GameState, id: unknown): string {
   const k = loseKeyAccount(s, id as number);
   if (!k) return 'The account had already moved on.';
-  return `{r}${k.name} has gone.{/} -${money(k.revenue)}/qtr revenue. PCS hit in ${AREA[k.area].short}: net customer adds and usage growth both fall.`;
+  return `{r}${k.name} has gone.{/} -${money(k.revenue)}/qtr revenue. PCS hit in ${AREA[k.area].label}: net customer adds and usage growth both fall.`;
 }
 
 export const EVENTS: EventDef[] = [
@@ -75,7 +75,7 @@ export const EVENTS: EventDef[] = [
       return k ? { keyId: k.id, name: k.name, area: k.area, rev: k.revenue, sat: k.sat } : null;
     },
     text: (_s, d) =>
-      `${d.name}'s new CIO is reviewing every supplier. Your ${A(d.area).short} contract, worth {y}${money(d.rev as number)}/qtr{/}, is on the table. Satisfaction is ${d.sat}%.`,
+      `${d.name}'s new CIO is reviewing every supplier. Your ${A(d.area).label} contract, worth {y}${money(d.rev as number)}/qtr{/}, is on the table. Satisfaction is ${d.sat}%.`,
     choices: (s, d) => {
       const base = 0.4 + (d.sat as number) / 200 + (s.unified ? 0.1 : 0) + specsInArea(s, d.area as AreaId) * 0.05;
       return [
@@ -125,13 +125,13 @@ export const EVENTS: EventDef[] = [
       return { area: best, n, adv: s.areas[best].adv };
     },
     text: (_s, d) =>
-      `A rival is offering big packages to ${d.n} of your senior ${A(d.area).short} engineers. Between them they hold {y}${Math.min(d.n as number, d.adv as number)} advanced{/} certifications.`,
+      `A rival is offering big packages to ${d.n} of your senior ${A(d.area).label} engineers. Between them they hold {y}${Math.min(d.n as number, d.adv as number)} advanced{/} certifications.`,
     choices: (s, d) => {
       const n = d.n as number;
       const keep = 0.55 + s.programmes.people * 0.1;
       const leave = (s2: GameState) => {
         const lost = removeTech(s2, n, areaOf(s2, d.area));
-        return `{r}${n} engineer${n > 1 ? 's' : ''} leave.{/} Lost ${lost.inter} intermediate and ${lost.adv} advanced certs: PCS skilling in ${A(d.area).short} drops.`;
+        return `{r}${n} engineer${n > 1 ? 's' : ''} leave.{/} Lost ${lost.inter} intermediate and ${lost.adv} advanced certs: PCS skilling in ${A(d.area).label} drops.`;
       };
       return [
         {
@@ -199,11 +199,11 @@ export const EVENTS: EventDef[] = [
           s2.q.workshopRevenue += 24;
           adjRep(s2, 2);
           const who = byAdvisor(s2, {
-            pdm: `${PDM_NAME}, your PDM, steers`,
+            pdm: `${currentPdm(s2).name}, your PDM, steers`,
             distributor: `${DISTRIBUTOR.am} at ${DISTRIBUTOR.company} points`,
             program: 'A MAICPP incentives email points',
           });
-          return `Downturn for 3 quarters. ${who} incentive-funded workshops your way in ${AREA[a].short}.`;
+          return `Downturn for 3 quarters. ${who} incentive-funded workshops your way in ${AREA[a].label}.`;
         },
       },
       {
@@ -235,7 +235,7 @@ export const EVENTS: EventDef[] = [
       return { area, keyId: k?.id ?? -1, name: k?.name ?? 'a mid-size customer' };
     },
     text: (_s, d) =>
-      `The ${A(d.area).short} deployment at ${d.name} has blown its timeline. Architecture choices are being questioned and the customer is furious.`,
+      `The ${A(d.area).label} deployment at ${d.name} has blown its timeline. Architecture choices are being questioned and the customer is furious.`,
     choices: (s, d) => {
       const area = d.area as AreaId;
       const swarm = 0.45 + skillRatio(s, area) * 0.45;
@@ -244,7 +244,7 @@ export const EVENTS: EventDef[] = [
         s2.areas[area].usage[3] -= 2;
         const k = keyById(s2, d.keyId);
         if (k) k.sat = Math.max(0, k.sat - 20);
-        return `{r}The project fails.{/} Reputation and ${AREA[area].short} usage growth take a hit.`;
+        return `{r}The project fails.{/} Reputation and ${AREA[area].label} usage growth take a hit.`;
       };
       const ok = (s2: GameState) => {
         s2.areas[area].deploys[3] += 1;
@@ -271,7 +271,7 @@ export const EVENTS: EventDef[] = [
         {
           label: 'Use deployment funding',
           hint: '$5K. Needs the designation. ~70%',
-          disabled: hasDesignation(s, area) ? undefined : `Needs ${AREA[area].short} designation`,
+          disabled: hasDesignation(s, area) ? undefined : `Needs ${AREA[area].label} designation`,
           apply: (s2) => {
             spend(s2, 5);
             return rand(s2) < 0.7 ? ok(s2) : fail(s2);
@@ -498,14 +498,14 @@ export const EVENTS: EventDef[] = [
     weight: (s) => (s.designations.length === 0 && s.reputation < 55 ? 0.15 : 0.4 + s.designations.length * 0.35 + s.programmes.cosell * 0.25),
     prepare: (s) => ({ area: businessArea(s), rev: randInt(s, 70, 120) }),
     text: (s, d) =>
-      `Your Microsoft account team needs a partner for a ${A(d.area).short} project at a big customer - fast. Worth about {y}${money(d.rev as number)}/qtr{/}.${s.lastReport && s.lastReport.utilisation > 1.05 ? ' {o}Your team is already stretched.{/}' : ''}`,
+      `Your Microsoft account team needs a partner for a ${A(d.area).label} project at a big customer - fast. Worth about {y}${money(d.rev as number)}/qtr{/}.${s.lastReport && s.lastReport.utilisation > 1.05 ? ' {o}Your team is already stretched.{/}' : ''}`,
     choices: () => [
       {
         label: 'Take it!',
         apply: (s2, d) => {
           const k = gainKeyAccount(s2, d.area as AreaId, d.rev as number);
           adjRep(s2, 2);
-          return `{g}${k.name} is now a key account!{/} Counts as a net customer add in ${AREA[k.area].short}.`;
+          return `{g}${k.name} is now a key account!{/} Counts as a net customer add in ${AREA[k.area].label}.`;
         },
       },
       {
@@ -525,7 +525,7 @@ export const EVENTS: EventDef[] = [
     cooldown: 3,
     weight: () => 0.6,
     prepare: (s) => ({ area: rand(s) < 0.6 ? s.focus.primary : pick(s, AREAS) }),
-    text: (_s, d) => `A Microsoft MVP and ${A(d.area).short} architect is looking for a new home - and likes your style.`,
+    text: (_s, d) => `A Microsoft MVP and ${A(d.area).label} architect is looking for a new home - and likes your style.`,
     choices: () => [
       {
         label: 'Hire them',
@@ -535,7 +535,7 @@ export const EVENTS: EventDef[] = [
           s2.tech += 1;
           addCerts(s2, d.area as AreaId, 0, 1);
           adjRep(s2, 2);
-          return `{g}Welcome aboard!{/} +1 engineer with an advanced ${AREA[d.area as AreaId].short} cert.`;
+          return `{g}Welcome aboard!{/} +1 engineer with an advanced ${AREA[d.area as AreaId].label} cert.`;
         },
       },
       { label: 'Not right now', apply: () => 'They join a competitor instead.' },
@@ -574,7 +574,7 @@ export const EVENTS: EventDef[] = [
       const k = pick(s, happy);
       return { keyId: k.id, name: k.name, area: k.area };
     },
-    text: (_s, d) => `${d.name} loves your work and wants to expand the ${A(d.area).short} programme by 30%.`,
+    text: (_s, d) => `${d.name} loves your work and wants to expand the ${A(d.area).label} programme by 30%.`,
     choices: () => [
       {
         label: 'Staff it up (hire 2)',
@@ -618,7 +618,7 @@ export const EVENTS: EventDef[] = [
       return { name: t.name, price: t.price, area: t.area, tech: t.tech, customers: t.customers };
     },
     text: (_s, d) =>
-      `${d.name}, a ${A(d.area).short} partner with ${d.tech} engineers and ${d.customers} customers, is quietly up for sale at around {y}${money(d.price as number)}{/}. The offer stands for two quarters.`,
+      `${d.name}, a ${A(d.area).label} partner with ${d.tech} engineers and ${d.customers} customers, is quietly up for sale at around {y}${money(d.price as number)}{/}. The offer stands for two quarters.`,
     choices: () => [{ label: 'Noted', hint: 'See ACTIONS > Acquire a Competitor', apply: () => 'Your corporate development folder gets a little thicker.' }],
   },
   {
@@ -681,7 +681,7 @@ export const EVENTS: EventDef[] = [
           adjCompliance(s2, -25);
           s2.flags.palAbuse = 1;
           if (rand(s2) < 0.55) schedule(s2, 2 + Math.floor(rand(s2) * 3), 'pal_audit');
-          return `${AREA[a].short} PCS jumps. {o}Somewhere, a compliance analyst raises an eyebrow.{/}`;
+          return `${AREA[a].label} PCS jumps. {o}Somewhere, a compliance analyst raises an eyebrow.{/}`;
         },
       },
       {
@@ -690,7 +690,7 @@ export const EVENTS: EventDef[] = [
         apply: (s2) => {
           adjCompliance(s2, 5);
           adjRep(s2, 1);
-          return `Integrity intact. ${byAdvisor(s2, { pdm: `${PDM_NAME}, your PDM, quietly approves.`, distributor: `${DISTRIBUTOR.am} at your distributor would approve.`, program: 'Exactly what the programme guidelines ask for.' })}`;
+          return `Integrity intact. ${byAdvisor(s2, { pdm: `${currentPdm(s2).name}, your PDM, quietly approves.`, distributor: `${DISTRIBUTOR.am} at your distributor would approve.`, program: 'Exactly what the programme guidelines ask for.' })}`;
         },
       },
     ],
@@ -714,7 +714,7 @@ export const EVENTS: EventDef[] = [
           adjCompliance(s2, -30);
           s2.flags.dumps = 1;
           if (rand(s2) < 0.65) schedule(s2, 1 + Math.floor(rand(s2) * 3), 'cert_revoked', { area: a, n: got.inter + 1 });
-          return `+${got.inter} certs in ${AREA[a].short}. {o}Exam security teams are not known for their sense of humour.{/}`;
+          return `+${got.inter} certs in ${AREA[a].label}. {o}Exam security teams are not known for their sense of humour.{/}`;
         },
       },
       {
@@ -737,7 +737,7 @@ export const EVENTS: EventDef[] = [
     cooldown: 6,
     weight: (s) => (s.tech >= 8 ? 1 : 0),
     prepare: (s) => ({ area: [...AREAS].sort((a, b) => s.areas[b].adv - s.areas[a].adv)[0] }),
-    text: (_s, d) => `Your lead ${A(d.area).short} architect asks for a 20% raise, citing offers from competitors.`,
+    text: (_s, d) => `Your lead ${A(d.area).label} architect asks for a 20% raise, citing offers from competitors.`,
     choices: () => [
       {
         label: 'Approve it',
@@ -778,7 +778,7 @@ export const EVENTS: EventDef[] = [
     cooldown: 4,
     weight: () => 1,
     prepare: (s) => ({ area: rand(s) < 0.5 ? 'dataai' : 'modern', name: pick(s, ['Relecloud', 'VanArsdel', 'Lamna Healthcare', 'Wide World Importers', 'Trey Research']) }),
-    text: (_s, d) => `${d.name} wants a fixed-price agentic AI pilot (${A(d.area).short}) in 8 weeks. Big logo, tiny margin, zero slack.`,
+    text: (_s, d) => `${d.name} wants a fixed-price agentic AI pilot (${A(d.area).label}) in 8 weeks. Big logo, tiny margin, zero slack.`,
     choices: (s, d) => {
       const p = 0.35 + skillRatio(s, d.area as AreaId) * 0.55;
       return [
@@ -814,7 +814,7 @@ export const EVENTS: EventDef[] = [
     cooldown: 5,
     weight: () => 0.8,
     prepare: (s) => ({ area: businessArea(s), name: pick(s, ['Blue Yonder Airlines', 'Fourth Coffee', 'Alpine Ski House', 'Adventure Works', 'Tailwind Traders']) }),
-    text: (_s, d) => `${d.name}, a household name, will sign a ${A(d.area).short} deal if you cut your rates by 35%.`,
+    text: (_s, d) => `${d.name}, a household name, will sign a ${A(d.area).label} deal if you cut your rates by 35%.`,
     choices: () => [
       {
         label: 'Sign them',
@@ -907,8 +907,8 @@ export const EVENTS: EventDef[] = [
     cooldown: 5,
     // Only managed partners (on the MPL) have a Partner Development Manager.
     weight: (s) => (s.mpl ? 0.9 : 0),
-    text: () =>
-      `${PDM_NAME}, your Partner Development Manager, wants you to pilot a new Microsoft partner programme. It will eat time, but could pay off.`,
+    text: (s) =>
+      `${currentPdm(s).name}, your Partner Development Manager, wants you to pilot a new Microsoft partner programme. It will eat time, but could pay off.`,
     choices: () => [
       {
         label: 'Sign us up',
@@ -925,7 +925,7 @@ export const EVENTS: EventDef[] = [
         label: 'Not this time',
         apply: (s2) => {
           adjRep(s2, -1);
-          return `${PDM_NAME} understands. Mostly.`;
+          return `${currentPdm(s2).name} understands. Mostly.`;
         },
       },
     ],
@@ -949,7 +949,7 @@ export const EVENTS: EventDef[] = [
           const a = s2.focus.primary;
           s2.q.leads[a] = (s2.q.leads[a] ?? 0) + 3;
           adjRep(s2, 1);
-          return `Vouchers issued and the campaign is live: extra certification progress and +3 ${AREA[a].short} leads.`;
+          return `Vouchers issued and the campaign is live: extra certification progress and +3 ${AREA[a].label} leads.`;
         },
       },
       { label: 'Not this time', apply: () => `${DISTRIBUTOR.am} promises to ask again next quarter.` },
@@ -1022,7 +1022,7 @@ export const EVENTS: EventDef[] = [
     minTurn: 2,
     weight: () => 0.8,
     prepare: (s) => ({ area: rand(s) < 0.5 ? s.focus.primary : pick(s, AREAS), rival: pick(s, RIVAL_NAMES) }),
-    text: (_s, d) => `${d.rival}'s ${A(d.area).short} team of three would jump ship - if the money is right.`,
+    text: (_s, d) => `${d.rival}'s ${A(d.area).label} team of three would jump ship - if the money is right.`,
     choices: () => [
       {
         label: 'Hire them',
@@ -1033,7 +1033,7 @@ export const EVENTS: EventDef[] = [
           addCerts(s2, d.area as AreaId, 2, 1);
           adjRep(s2, -2);
           adjMorale(s2, -2);
-          return `+3 engineers with ${AREA[d.area as AreaId].short} certs. The industry gossips.`;
+          return `+3 engineers with ${AREA[d.area as AreaId].label} certs. The industry gossips.`;
         },
       },
       { label: 'Pass', apply: () => 'You keep the moral high ground.' },
@@ -1340,7 +1340,7 @@ export const EVENTS: EventDef[] = [
           ar.adv = Math.min(ar.adv, ar.inter);
           adjCompliance(s2, -10);
           adjRep(s2, -6);
-          return `{r}${n} ${AREA[a].short} certifications revoked.{/} Reputation -6. Lesson learned.`;
+          return `{r}${n} ${AREA[a].label} certifications revoked.{/} Reputation -6. Lesson learned.`;
         },
       },
     ],
@@ -1350,7 +1350,7 @@ export const EVENTS: EventDef[] = [
     kind: 'followup',
     icon: 'door',
     title: 'ARCHITECT RESIGNS',
-    text: (_s, d) => `Your lead ${A(d.area).short} architect has accepted a competitor's offer.`,
+    text: (_s, d) => `Your lead ${A(d.area).label} architect has accepted a competitor's offer.`,
     choices: () => [
       {
         label: 'Ouch',

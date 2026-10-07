@@ -10,7 +10,8 @@ import { background, footer, header, keyHint, requireState } from './common';
 import { yearEndDone } from './flow';
 
 export class YearEndScene implements Scene {
-  music = 'hub';
+  // Keep the outgoing year's tune; the next one starts with the FY plan.
+  music = undefined;
   private t0 = -1;
   private revealed = false;
   constructor(private r: YearEndReport) {}

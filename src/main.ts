@@ -59,6 +59,7 @@ app.go(new BootScene(), true);
 // Expose a tiny debug hook for automated smoke tests.
 (window as unknown as { __rtf: App; __rtfScenes: unknown }).__rtf = app;
 (window as unknown as { __rtfUi: unknown }).__rtfUi = ui;
+(window as unknown as { __rtfAudio: unknown }).__rtfAudio = audio;
 (window as unknown as { __rtfScenes: unknown }).__rtfScenes = { EndingScene, YearEndScene, HiscoreScene, HelpScene, CreditsScene, TitleScene, HubScene, PlanScene, ActionsScene, CompanyScene, EventScene };
 
 let last = performance.now();

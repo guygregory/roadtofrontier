@@ -8,7 +8,13 @@ export const AREAS: AreaId[] = ['dataai', 'infra', 'dai', 'bizapps', 'modern', '
 
 export interface AreaInfo {
   id: AreaId;
+  /** Official designation name, e.g. "Data & AI (Azure)". */
   name: string;
+  /** Readable name for sentences, e.g. "Data & AI", "Modern Work". */
+  label: string;
+  /** Medium-length name for lists and buttons (20 characters at most). */
+  mid: string;
+  /** Abbreviation for very tight spaces only, e.g. "D&AI", "MW". */
   short: string;
   colour: number;
   azure: boolean;
@@ -21,6 +27,8 @@ export const AREA: Record<AreaId, AreaInfo> = {
   dataai: {
     id: 'dataai',
     name: 'Data & AI (Azure)',
+    label: 'Data & AI',
+    mid: 'Data & AI',
     short: 'D&AI',
     colour: C.PURPLE,
     azure: true,
@@ -30,6 +38,8 @@ export const AREA: Record<AreaId, AreaInfo> = {
   infra: {
     id: 'infra',
     name: 'Infrastructure (Azure)',
+    label: 'Infrastructure',
+    mid: 'Infrastructure',
     short: 'INFRA',
     colour: C.MSBLUE,
     azure: true,
@@ -39,6 +49,8 @@ export const AREA: Record<AreaId, AreaInfo> = {
   dai: {
     id: 'dai',
     name: 'Digital & App Innovation (Azure)',
+    label: 'Digital & App Innovation',
+    mid: 'Digital & App Innov.',
     short: 'DAI',
     colour: C.CYAN,
     azure: true,
@@ -48,6 +60,8 @@ export const AREA: Record<AreaId, AreaInfo> = {
   bizapps: {
     id: 'bizapps',
     name: 'Business Applications',
+    label: 'Business Applications',
+    mid: 'Business Apps',
     short: 'BIZAPPS',
     colour: C.ORANGE,
     azure: false,
@@ -57,7 +71,9 @@ export const AREA: Record<AreaId, AreaInfo> = {
   modern: {
     id: 'modern',
     name: 'Modern Work',
-    short: 'MODERN',
+    label: 'Modern Work',
+    mid: 'Modern Work',
+    short: 'MW',
     colour: C.MSGREEN,
     azure: false,
     blurb: 'Microsoft 365 Copilot, Teams, endpoints and adoption.',
@@ -66,6 +82,8 @@ export const AREA: Record<AreaId, AreaInfo> = {
   security: {
     id: 'security',
     name: 'Security',
+    label: 'Security',
+    mid: 'Security',
     short: 'SECURITY',
     colour: C.MSRED,
     azure: false,
@@ -77,6 +95,23 @@ export const AREA: Record<AreaId, AreaInfo> = {
 /** PCS metric weights (sum 100), mirroring Performance / Skilling / Customer success. */
 export const PCS_WEIGHTS = { adds: 30, inter: 15, adv: 15, usage: 20, deploys: 20 };
 export const PCS_QUALIFY = 70;
+
+/** The fullest name for an area that fits in maxChars: the readable label, then the medium name, then the abbreviation. */
+export function areaName(a: AreaId, maxChars = Infinity): string {
+  const info = AREA[a];
+  for (const n of [info.label, info.mid]) if (n.length <= maxChars) return n;
+  return info.short;
+}
+
+/** A list of areas ("Modern Work or Security") using the fullest names that fit in maxChars. */
+export function areaList(areas: AreaId[], maxChars = Infinity, sep = ' or '): string {
+  const join = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')}${sep}${names[names.length - 1]}` : names[0] ?? '');
+  for (const key of ['label', 'mid', 'short'] as const) {
+    const s = join(areas.map((a) => AREA[a][key]));
+    if (s.length <= maxChars || key === 'short') return s;
+  }
+  return '';
+}
 
 // ---------------------------------------------------------------------------
 // Specializations (aligned designations follow Microsoft Learn's prerequisite table)
@@ -290,7 +325,22 @@ export const AZURE_ZERO = {
 // (once you join CSP through an Indirect Provider), then a Microsoft PDM (Managed Partner List).
 
 export const DISTRIBUTOR = { company: 'Kickstart Distribution', am: 'Sam' };
-export const PDM_NAME = 'Alex';
+
+/** Microsoft Partner Development Managers. Alex is your first; the others may take over later. */
+export const PDMS: { id: string; name: string }[] = [
+  { id: 'alex', name: 'Alex' },
+  { id: 'priya', name: 'Priya' },
+  { id: 'kwame', name: 'Kwame' },
+  { id: 'mei', name: 'Mei' },
+  { id: 'aisha', name: 'Aisha' },
+  { id: 'diego', name: 'Diego' },
+];
+
+/** Why a PDM moves on (it makes no difference to the game). */
+export const PDM_CHANGE_REASONS = ['has left Microsoft', 'has moved to a new role within Microsoft', 'has been realigned to a different partner'];
+
+/** A managed partner's PDM changes at the start of an FY, every 2 to 4 years. */
+export const PDM_TENURE_YEARS = { min: 2, max: 4 };
 
 // ---------------------------------------------------------------------------
 // Flavour: Microsoft's fictitious company names

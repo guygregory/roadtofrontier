@@ -632,6 +632,146 @@ function inboxRows(): string[] {
   return rows;
 }
 
+// Your other Partner Development Managers (24x24). PDMs move on every few years; see game/advisor.ts.
+const PDM_ART: Record<string, string[]> = {
+  alex: PDM,
+  // Priya: long black hair, gold earrings
+  priya: [
+    '........kkkkkkkk........',
+    '......kknnnnnnnnkk......',
+    '.....knnnnnnnnnnnnk.....',
+    '....knnndnnnnnnnnnnk....',
+    '...knnnnnnnSSnnnnnnnk...',
+    '...knnnnnSSSSSSnnnnnk...',
+    '...knnnSSSSSSSSSSnnnk...',
+    '...knnSkkkSSSSkkkSnnk...',
+    '...knnSSSSSSSSSSSSnnk...',
+    '...knnSwkSSSSSSkwSnnk...',
+    '...knnSSSSSSSSSSSSnnk...',
+    '...knySSSSShhSSSSSynk...',
+    '...knnSSSSSSSSSSSSnnk...',
+    '...knnSSSSSSSSSSSSnnk...',
+    '...knnSSSXXXXXXSSSnnk...',
+    '...knnnSSSSXXSSSSnnnk...',
+    '...knnnnkSSSSSSknnnnk...',
+    '..knnnnnnkSSSSknnnnnnk..',
+    '..knnnnnkuuSSuuknnnnnk..',
+    '.knnnnkuuuuuuuuuuknnnnk.',
+    '.knnnkuuuuuuuuuuuuknnnk.',
+    '.knnkuuuuuuuuuuuuuuknnk.',
+    '.kkkuuuuuuuuuuuuuuuukkk.',
+    '.kuuuuuuuuuuuuuuuuuuuuk.',
+  ],
+  // Kwame: short beard, grey suit, green tie
+  kwame: [
+    '........................',
+    '........kkkkkkkk........',
+    '......kknnnnnnnnkk......',
+    '.....knnnnnnnnnnnnk.....',
+    '....knnnnnnnnnnnnnnk....',
+    '....knhhhhhhhhhhhhnk....',
+    '....khhhhhhhhhhhhhhk....',
+    '....khkkkhhhhhhkkkhk....',
+    '....khhhhhhhhhhhhhhk....',
+    '....khhwkhhhhhhkwhhk....',
+    '....khhhhhhhhhhhhhhk....',
+    '....khhhhhHHHHhhhhhk....',
+    '....khhhhhhhhhhhhhhk....',
+    '....knhhhhhhhhhhhhnk....',
+    '....knnhhwwwwwwhhnnk....',
+    '.....knnnhhhhhhnnnk.....',
+    '......knnnnnnnnnnk......',
+    '........kkhhhhkk........',
+    '.....kkkTwhhhhwTkkk.....',
+    '...kkTTTTwwvvwwTTTTkk...',
+    '..kTTTTTTtwvvwtTTTTTTk..',
+    '..kTTTTTTTtvvtTTTTTTTk..',
+    '.kTTTTTTTTTvvTTTTTTTTTk.',
+    '.kTTTTTTTTTvvTTTTTTTTTk.',
+  ],
+  // Mei: bob with a fringe, pearl earrings
+  mei: [
+    '........kkkkkkkk........',
+    '......kknnnnnnnnkk......',
+    '.....knnnnnnnnnnnnk.....',
+    '....knnnnnnnnnnnnnnk....',
+    '...knnnndnnnnnnnnnnnk...',
+    '...knnnnnnnnnnnnnnnnk...',
+    '...knnnnnnnnnnnnnnnnk...',
+    '...knnssssssssssssnnk...',
+    '...knnssssssssssssnnk...',
+    '...knnswksssssskwsnnk...',
+    '...knnssssssssssssnnk...',
+    '...knwsssssSSssssswnk...',
+    '...knnssssssssssssnnk...',
+    '...knnssssssssssssnnk...',
+    '...knnsssXXXXXXsssnnk...',
+    '...kknnssssssssssnnkk...',
+    '......kksssssssskk......',
+    '........kksssskk........',
+    '......kkXXssssXXkk......',
+    '....kkXXXXXssXXXXXkk....',
+    '...kXXXXXXXXXXXXXXXXk...',
+    '..kXXXXXXXXXXXXXXXXXXk..',
+    '.kXXXXXXXXXXXXXXXXXXXXk.',
+    '.kXXXXXXXXXXXXXXXXXXXXk.',
+  ],
+  // Aisha: green hijab
+  aisha: [
+    '........kkkkkkkk........',
+    '......kkDDDDDDDDkk......',
+    '.....kDDDmmDDDDDDDk.....',
+    '....kDDDmDDDDDDDDDDk....',
+    '....kDDDDDDDDDDDDDDk....',
+    '...kDDDDSSSSSSSSDDDDk...',
+    '...kDDDSSSSSSSSSSDDDk...',
+    '...kDDSkkkSSSSkkkSDDk...',
+    '...kDDSSSSSSSSSSSSDDk...',
+    '...kDDSwkSSSSSSkwSDDk...',
+    '...kDDSSSSSSSSSSSSDDk...',
+    '...kDDSSSSShhSSSSSDDk...',
+    '...kDDSSSSSSSSSSSSDDk...',
+    '...kDDSSSSSSSSSSSSDDk...',
+    '...kDDSSSXXXXXXSSSDDk...',
+    '...kDDDSSSSXXSSSSDDDk...',
+    '...kDDDDSSSSSSSSDDDDk...',
+    '...kDDDDDDSSSSDDDDDDk...',
+    '..kDDDDDDDDDDDDDDDDDDk..',
+    '.kDDDmDDDDDDDDDDDDDDDDk.',
+    '.kDDDDDDDDDDDDDDDDDDDDk.',
+    '.ktDDDDDDDDDDDDDDDDDDtk.',
+    'kttDDDDDDDDDDDDDDDDDDttk',
+    'ktttDDDDDDDDDDDDDDDDtttk',
+  ],
+  // Diego: silver hair, glasses, moustache, cardigan
+  diego: [
+    '........................',
+    '........kkkkkkkk........',
+    '......kkllllllllkk......',
+    '.....klllgllllllllk.....',
+    '....kllllSSSSSSllllk....',
+    '....kllSSSSSSSSSSllk....',
+    '....klSgggSSSSgggSlk....',
+    '....kSkkkkkSSkkkkkSk....',
+    '....kSkcwckkkkcwckSk....',
+    '....kSkckckSSkckckSk....',
+    '....kSkkkkkSSkkkkkSk....',
+    '....kSSSSSShhSSSSSSk....',
+    '....kSSSSSSSSSSSSSSk....',
+    '....kSSSSggggggSSSSk....',
+    '....kSSSgSxxxxSgSSSk....',
+    '.....kSSSSSSSSSSSSk.....',
+    '......kkSSSSSSSSkk......',
+    '........kkSSSSkk........',
+    '.....kkkhwSSSSwhkkk.....',
+    '...kkhhhhhwwwwhhhhhkk...',
+    '..khhhhhhhhhhhhhhhhhhk..',
+    '..khhhhhhhhhhhhhhhhhhk..',
+    '.khhhhhhhhhhhhhhhhhhhhk.',
+    '.khhhhhhhhhhhhhhhhhhhhk.',
+  ],
+};
+
 const FLOPPY = [
   '..kkkkkkkkkkkkkkkkkkkkkkkkkkkk..',
   '.kNNNNNNkkkkkkkkkkkkkkkkkNNNNNk.',
@@ -718,9 +858,15 @@ export const SPR = {
   },
 };
 
-/** Portrait for whoever is advising you (see game/advisor.ts). */
-export function advisorSprite(id: 'pdm' | 'disti' | 'inbox'): Sprite {
-  return SPR[id];
+/**
+ * Portrait for whoever is advising you (see game/advisor.ts): 'disti', 'inbox', or 'pdm:<id>'
+ * for a Partner Development Manager.
+ */
+export function advisorSprite(id: string): Sprite {
+  if (id === 'disti') return SPR.disti;
+  if (id === 'inbox') return SPR.inbox;
+  const pdm = id.startsWith('pdm:') ? id.slice(4) : 'alex';
+  return cachedArt(`pdm:${pdm}`, PDM_ART[pdm] ?? PDM);
 }
 
 function cachedArt(key: string, rows: string[]): Sprite {

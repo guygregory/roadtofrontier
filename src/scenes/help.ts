@@ -52,7 +52,7 @@ export const PAGES: { title: string; icon: string; body: string }[] = [
     title: 'ADVISORS & BENEFITS',
     icon: 'mail',
     body:
-      'At first only {c}MAICPP programme emails{/} advise you. Join {c}CSP{/} through a distributor and {y}Sam{/}, their account manager, takes over. Earn a {g}second specialization{/} and Microsoft adds you to its {y}Managed Partner List{/} next FY, with {y}Alex{/}, your own PDM.\n\n' +
+      'At first only {c}MAICPP programme emails{/} advise you. Join {c}CSP{/} through a distributor and {y}Sam{/}, their account manager, takes over. Earn a {g}second specialization{/} and Microsoft adds you to its {y}Managed Partner List{/} next FY, with {y}Alex{/}, your own PDM. Every 2-4 years a new PDM takes over.\n\n' +
       'Partner Success, designations and specializations grant yearly {c}Azure credits{/} (they expire on 30 June). Use them to become {y}Customer Zero for Azure{/}, or pay cash.\n\n' +
       'Once you hold a designation you can {o}stop renewing Partner Success{/}: Solutions Partner benefits exceed it.',
   },
@@ -67,7 +67,7 @@ export const PAGES: { title: string; icon: string; body: string }[] = [
       '• Build {c}repeatable offers{/} and co-sell with Microsoft account teams.\n' +
       '• Be {c}customer zero{/} for Copilot and Azure.\n' +
       '• {c}Unified for Partners{/} softens outages and failing projects.\n\n' +
-      'Controls: mouse, or arrows/WASD + Enter, Esc to go back. M = music, F = fullscreen.',
+      'Controls: mouse, or arrows/WASD + Enter, Esc to go back. Tab/Shift+Tab switch Partner Center tabs. M = music, F = fullscreen.',
   },
 ];
 

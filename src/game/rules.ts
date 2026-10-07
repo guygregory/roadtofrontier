@@ -1,4 +1,4 @@
-import { AREA, AREAS, AreaId, AZURE_CREDITS, CreditCategory, creditCategory, FRONTIER, OFFER, PCS_QUALIFY, PCS_WEIGHTS, SPEC, SpecDef } from './data';
+import { AREA, AREAS, AreaId, areaList, AZURE_CREDITS, CreditCategory, creditCategory, FRONTIER, OFFER, PCS_QUALIFY, PCS_WEIGHTS, SPEC, SpecDef } from './data';
 import type { GameState } from './types';
 
 export const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
@@ -81,24 +81,27 @@ export interface Req {
   detail?: string;
 }
 
-/** Qualification requirements for a specialization (before audit / reference). */
+/**
+ * Qualification requirements for a specialization (before audit / reference). The skill and
+ * customer lines all refer to the specialization's skill area (AREA[spec.skill]).
+ */
 export function specRequirements(s: GameState, spec: SpecDef): Req[] {
   const a = s.areas[spec.skill];
   const deploys = Math.round(sum(a.deploys));
   const reqs: Req[] = [
     {
-      label: `Solutions Partner: ${spec.aligned.map((x) => AREA[x].short).join(' or ')}`,
+      label: `Solutions Partner: ${areaList(spec.aligned)}`,
       ok: spec.aligned.some((x) => hasDesignation(s, x)),
     },
-    { label: `${spec.inter}+ intermediate certs (${AREA[spec.skill].short})`, ok: a.inter >= spec.inter, detail: `${a.inter}/${spec.inter}` },
-    { label: `${spec.adv}+ advanced certs (${AREA[spec.skill].short})`, ok: a.adv >= spec.adv, detail: `${a.adv}/${spec.adv}` },
+    { label: `${spec.inter}+ intermediate certs`, ok: a.inter >= spec.inter, detail: `${a.inter}/${spec.inter}` },
+    { label: `${spec.adv}+ advanced certs`, ok: a.adv >= spec.adv, detail: `${a.adv}/${spec.adv}` },
     { label: `${spec.deploys}+ deployments in 12 months`, ok: deploys >= spec.deploys, detail: `${deploys}/${spec.deploys}` },
   ];
   if (spec.customers) {
     const c = a.customers + s.key.filter((k) => k.area === spec.skill).length;
-    reqs.push({ label: `${spec.customers}+ ${AREA[spec.skill].short} customers`, ok: c >= spec.customers, detail: `${c}/${spec.customers}` });
+    reqs.push({ label: `${spec.customers}+ customers`, ok: c >= spec.customers, detail: `${c}/${spec.customers}` });
   }
-  if (spec.offer) reqs.push({ label: `Marketplace offer (${AREA[spec.skill].short})`, ok: publishedOffers(s, spec.skill) > 0 });
+  if (spec.offer) reqs.push({ label: 'Marketplace offer', ok: publishedOffers(s, spec.skill) > 0 });
   return reqs;
 }
 

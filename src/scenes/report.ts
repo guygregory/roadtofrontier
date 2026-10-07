@@ -99,7 +99,7 @@ export function drawReportPage(g: Gfx, r: QuarterReport, page: number): void {
     const won = AREAS.reduce((n, a) => n + (r.wins[a] ?? 0), 0);
     text(g, 'CUSTOMERS', L, 34, C.CYAN);
     text(g, `Won: {g}${won}{/}   Lost: {r}${r.lost}{/}`, L, 46, C.WHITE);
-    AREAS.filter((a) => (r.wins[a] ?? 0) > 0).forEach((a, i) => text(g, `${AREA[a].short}: +${r.wins[a]}`, L + (i % 3) * 60, 58 + Math.floor(i / 3) * 10, AREA[a].colour));
+    AREAS.filter((a) => (r.wins[a] ?? 0) > 0).forEach((a, i) => text(g, `${AREA[a].short}: +${r.wins[a]}`, L + (i % 3) * 100, 58 + Math.floor(i / 3) * 10, AREA[a].colour));
     let y = 82;
     text(g, 'KEY ACCOUNTS', L, y, C.CYAN);
     y += 12;
@@ -150,7 +150,8 @@ export function drawReportPage(g: Gfx, r: QuarterReport, page: number): void {
 }
 
 export class ReportScene implements Scene {
-  music = 'hub';
+  // Keep the current tune: after Q4 the turn has already moved into the next FY, whose tune starts with its plan.
+  music = undefined;
   private page = 0;
   constructor(private r: QuarterReport) {}
 

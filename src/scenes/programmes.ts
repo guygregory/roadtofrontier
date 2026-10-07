@@ -52,7 +52,8 @@ export class ProgrammesScene implements Scene {
     });
     // Secondary focus
     const fy = 32 + 4 * 18;
-    text(g, `Primary: {y}${AREA[s.focus.primary].short}{/}   Secondary: {c}${s.focus.secondary ? AREA[s.focus.secondary].short : 'none'}{/}`, 6, fy + 4, C.LSLATE);
+    text(g, `Primary: {y}${AREA[s.focus.primary].mid}{/}`, 6, fy, C.LSLATE);
+    text(g, `Secondary: {c}${s.focus.secondary ? AREA[s.focus.secondary].mid : 'none'}{/}`, 6, fy + 10, C.LSLATE);
     if (ui.button(222, fy, 92, 14, 'SWAP 2ND', { style: 'box', desc: 'Change your secondary focus area (costs one adjustment). The primary area is fixed for the year.' })) {
       if (s.adjustments <= 0) {
         audio.sfx('error');

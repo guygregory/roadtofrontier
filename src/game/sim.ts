@@ -1,7 +1,7 @@
-import { AREA, AREAS, AreaId, AZURE_ZERO, CFG, OFFER, PDM_NAME, PROGRAMMES, PS_FEE, SPEC } from './data';
+import { AREA, AREAS, AreaId, areaName, AZURE_ZERO, CFG, OFFER, PROGRAMMES, PS_FEE, SPEC } from './data';
 import { credits, fyOf, money, qOf, turnLabel } from './format';
 import { rollEvents } from './events';
-import { advisor } from './advisor';
+import { advisor, assignFirstPdm, currentPdm, rotatePdm } from './advisor';
 import {
   adjMorale,
   adjRep,
@@ -254,7 +254,8 @@ export function endQuarter(s: GameState): QuarterReport {
       const area = businessArea(s);
       const rev = randInt(s, 60, 130) * (1 + 0.1 * specsInArea(s, area)) * (down ? 0.85 : 1);
       const k = gainKeyAccount(s, area, rev);
-      newKey.push(`${k.name} (${AREA[area].short}, ${money(k.revenue)}/qtr)`);
+      // Shown as "+ name (area, $X/qtr)" in a 50-character report line.
+      newKey.push(`${k.name} (${areaName(area, 39 - k.name.length - money(k.revenue).length)}, ${money(k.revenue)}/qtr)`);
       notices.push(`{g}New key account: ${k.name}!{/}`);
     }
   }
@@ -498,12 +499,12 @@ export function endQuarter(s: GameState): QuarterReport {
     if (ar.qualHist.slice(-3).some(Boolean)) {
       d.renewAt = s.turn + 4;
       s.cash -= CFG.designationFee;
-      notices.push(`Solutions Partner for ${AREA[d.area].short} renewed for another year.`);
+      notices.push(`Solutions Partner for ${AREA[d.area].name} renewed for another year.`);
     } else {
       s.designations = s.designations.filter((x) => x !== d);
       adjRep(s, -4);
       notices.push(`{r}Solutions Partner for ${AREA[d.area].name} lapsed - PCS below 70 at renewal.{/}`);
-      news(s, `${s.company} loses its ${AREA[d.area].short} designation.`);
+      news(s, `${s.company} loses its ${AREA[d.area].label} designation.`);
     }
   }
 
@@ -634,13 +635,20 @@ function endYear(s: GameState): YearEndReport {
       notices.push('{r}MAICPP membership NOT renewed.{/}');
     } else {
       notices.push('MAICPP membership renewed: agreement accepted, profile verified.');
+      // Managed partners get a new PDM every few years, at the start of an FY.
+      const pdmChange = rotatePdm(s, s.turn + 1);
+      if (pdmChange) {
+        notices.push(pdmChange);
+        news(s, `${currentPdm(s).name} becomes ${s.company}'s Partner Development Manager.`);
+      }
       // Managed Partner List: from the FY after your second specialization, a PDM looks after you.
       if (!s.mpl && s.flags.secondSpec !== undefined) {
         const before = advisor(s);
         s.mpl = true;
         s.flags.mplSince = s.turn + 1;
+        assignFirstPdm(s, s.turn + 1);
         const from = before.kind === 'distributor' ? `${before.name} at your distributor` : 'the MAICPP programme emails';
-        notices.push(`{g}You join Microsoft's Managed Partner List for FY${fy + 1}!{/} ${PDM_NAME}, your new Partner Development Manager, takes over from ${from}.`);
+        notices.push(`{g}You join Microsoft's Managed Partner List for FY${fy + 1}!{/} ${currentPdm(s).name}, your new Partner Development Manager, takes over from ${from}.`);
         news(s, `${s.company} joins Microsoft's Managed Partner List.`);
       }
       if (s.benefits !== 'none') {

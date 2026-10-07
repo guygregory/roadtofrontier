@@ -277,7 +277,7 @@ export function acquire(s: GameState, targetId: number, financed: boolean): stri
   addCerts(s, t.area, t.inter - t.adv, t.adv);
   // Customer associations transfer over time; half count as net adds now.
   ar.adds[3] += Math.round(t.customers / 2);
-  let msg = `${t.name} is now part of ${s.company}! +${t.tech} engineers, +${t.customers} ${AREA[t.area].short} customers.`;
+  let msg = `${t.name} is now part of ${s.company}! +${t.tech} engineers, +${t.customers} ${AREA[t.area].label} customers.`;
   if (t.keyRevenue > 0) {
     const k = gainKeyAccount(s, t.area, t.keyRevenue);
     msg += ` Key account ${k.name} comes too.`;

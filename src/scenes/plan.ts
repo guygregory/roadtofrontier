@@ -1,5 +1,5 @@
 import type { App, Scene } from '../app';
-import { audio } from '../engine/audio';
+import { audio, gameSong, SONGS } from '../engine/audio';
 import { C } from '../engine/palette';
 import { text, paragraph, wrap } from '../engine/font';
 
@@ -10,9 +10,9 @@ function wrapLimit(s: string, w: number, n: number): string {
 }
 import { bar, panel, ui } from '../engine/ui';
 import { advisorSprite } from '../engine/sprites';
-import { AREA, AREAS, AreaId, BETS, DISTRIBUTOR, LEVEL_NAMES, PDM_NAME, PROGRAMMES, PS_FEE } from '../game/data';
+import { AREA, AREAS, AreaId, BETS, DISTRIBUTOR, LEVEL_NAMES, PROGRAMMES, PS_FEE } from '../game/data';
 import { fyOf, money } from '../game/format';
-import { advisor } from '../game/advisor';
+import { advisor, pdmChangeReason } from '../game/advisor';
 import { canStopBenefits, hasDesignation, pcs } from '../game/rules';
 import { forecastCosts, lastRevenue } from '../game/sim';
 import { benefitsRenewalDue, buyBenefits, setBenefitsRenewal } from '../game/actions';
@@ -62,8 +62,10 @@ export class PlanScene implements Scene {
     if (email) tips.push(`{c}From:{/} MAICPP (no-reply)\n{c}Subject:{/} FY${fy} starts today`);
     if (who.kind === 'pdm' && s.flags.mplSince === s.turn) {
       tips.push(
-        `Hi, I'm {y}${PDM_NAME}{/}, your new Partner Development Manager! With two specializations, ${s.company} is now on Microsoft's {g}Managed Partner List{/}. I'll connect you with account teams for co-selling and champion your Partner of the Year nominations.`,
+        `Hi, I'm {y}${who.name}{/}, your new Partner Development Manager! With two specializations, ${s.company} is now on Microsoft's {g}Managed Partner List{/}. I'll connect you with account teams for co-selling and champion your Partner of the Year nominations.`,
       );
+    } else if (who.kind === 'pdm' && s.flags.pdmSince === s.turn) {
+      tips.push(`Hi, I'm {y}${who.name}{/}, your new Partner Development Manager! ${pdmChangeReason(s)}, so I'll be looking after ${s.company} from now on.`);
     }
     if (s.turn === 0) {
       tips.push('A new financial year! Set your priorities: which Solutions Partner designations to chase, what to invest in, and your big strategic bet.');
@@ -88,6 +90,8 @@ export class PlanScene implements Scene {
       lines.push(...w);
     }
     lines.forEach((l, i) => text(g, l, 72, 48 + i * 10, C.WHITE));
+    // Each financial year has its own tune: name it as it starts.
+    text(g, `♪ ${SONGS[gameSong(fy)].title}`, 14, 226, C.LSLATE);
     if (ui.button(196, 222, 112, 14, 'PLAN THE YEAR ►', { style: 'box' })) {
       this.step = 1;
       ui.reset(AREAS.indexOf(s.focus.primary));

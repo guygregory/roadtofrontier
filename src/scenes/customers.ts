@@ -1,8 +1,8 @@
 import type { App, Scene } from '../app';
 import { C } from '../engine/palette';
-import { text } from '../engine/font';
+import { paragraph, text } from '../engine/font';
 import { bar, panel, ui } from '../engine/ui';
-import { AREA, AREAS } from '../game/data';
+import { AREA, AREAS, areaName } from '../game/data';
 import { money, turnLabel } from '../game/format';
 import { background, footer, header, keyHint, requireState } from './common';
 import { HubScene } from './hub';
@@ -35,28 +35,29 @@ export class CustomersScene implements Scene {
       bar(g, 226, y + 1, 70, 6, k.sat, 100, k.sat < 30 ? C.RED : k.sat < 55 ? C.ORANGE : C.GREEN);
       text(g, String(k.sat), 314, y, C.WHITE, { align: 'right' });
     });
-    if (keys.length === 0) text(g, 'No key accounts yet. Co-sell, events and offers attract them.', 8, 44, C.GREY);
+    if (keys.length === 0) paragraph(g, 'No key accounts yet. Co-sell, events and offers attract them.', 8, 44, 304, C.GREY, 10);
     if (keys.length > visible) text(g, `${this.first + 1}-${Math.min(keys.length, this.first + visible)} of ${keys.length} (scroll)`, 314, 131, C.GREY, { align: 'right' });
 
     panel(g, 2, 142, 140, 102, 'BY AREA');
     AREAS.forEach((a, i) => {
       const y = 158 + i * 11;
       g.rect(8, y + 1, 5, 6, AREA[a].colour);
-      text(g, AREA[a].short, 16, y, C.LGREY);
+      text(g, areaName(a, 15), 16, y, C.LGREY);
       const n = s.areas[a].customers + s.key.filter((k) => k.area === a).length;
       text(g, String(n), 136, y, C.WHITE, { align: 'right' });
     });
 
     panel(g, 144, 142, 174, 102, 'COMPANIES FOR SALE');
     if (s.targets.length === 0) {
-      text(g, 'Nobody is for sale right now.', 150, 160, C.GREY);
-      text(g, 'Opportunities appear as events.', 150, 170, C.GREY);
+      text(g, 'Nobody is for sale now.', 150, 160, C.GREY);
+      text(g, 'Offers come up as events.', 150, 170, C.GREY);
     }
     s.targets.slice(0, 2).forEach((t, i) => {
       const y = 158 + i * 34;
       text(g, t.name, 150, y, C.YELLOW);
-      text(g, `${AREA[t.area].short}  ${t.tech} eng  ${t.customers} cust`, 150, y + 9, C.WHITE);
-      text(g, `Price ~${money(t.price)}  until ${turnLabel(t.expires)}`, 150, y + 18, C.LSLATE);
+      const tail = ` ${t.tech} eng ${t.customers} cust`;
+      text(g, `${areaName(t.area, 27 - tail.length)}${tail}`, 150, y + 9, C.WHITE);
+      text(g, `Price ~${money(t.price)} until ${turnLabel(t.expires)}`, 150, y + 18, C.LSLATE);
     });
     if (s.targets.length > 0 && ui.button(150, 226, 100, 13, 'GO TO ACQUIRE', { style: 'box' })) app.go(new ActionsScene());
     if (ui.button(262, 226, 52, 13, 'DONE', { style: 'box' }) || ui.back()) app.go(new HubScene());

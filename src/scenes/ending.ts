@@ -5,13 +5,23 @@ import { text, paragraph } from '../engine/font';
 import { burst, drawParticles, Particle, starfield, titleText, updateParticles } from '../engine/fx';
 import { panel, ui } from '../engine/ui';
 import { icon, msLogo } from '../engine/sprites';
-import { AREA } from '../game/data';
+import { AREA, AreaId } from '../game/data';
 import { money, turnLabel } from '../game/format';
 import { finalScore, resultLabel } from '../game/score';
 import { qualifies, deleteSave } from '../game/save';
 import { totalCustomers } from '../game/rules';
 import { HiscoreScene } from './hiscore';
 import { TitleScene } from './title';
+
+/** Designations held, using the fullest area names that fit the 53-character stats line. */
+function designationList(areas: AreaId[]): string {
+  if (areas.length === 0) return 'none';
+  for (const key of ['label', 'mid'] as const) {
+    const t = areas.map((a) => AREA[a][key]).join(', ');
+    if (t.length <= 39) return t;
+  }
+  return areas.map((a) => AREA[a].short).join(', ');
+}
 
 export class EndingScene implements Scene {
   music = '';
@@ -43,7 +53,7 @@ export class EndingScene implements Scene {
     const g = app.g;
     const lines = [
       `Finished: ${turnLabel(s.flags.endTurn ?? Math.max(0, s.turn - 1))}`,
-      `Designations: ${s.designations.map((d) => AREA[d.area].short).join(', ') || 'none'}`,
+      `Designations: ${designationList(s.designations.map((d) => d.area))}`,
       `Specializations: ${s.specs.length}   Offers: ${s.offers.filter((o) => o.published).length}`,
       `Customers: ${totalCustomers(s)}   Staff: ${s.tech + s.sales}`,
       `Cash: ${money(s.cash)}   Revenue/qtr: ${money(s.lastReport?.revenue.total ?? 0)}`,

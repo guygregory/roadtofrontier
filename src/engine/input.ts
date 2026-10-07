@@ -8,6 +8,7 @@ export type Key =
   | 'enter'
   | 'back'
   | 'tab'
+  | 'backtab'
   | 'pgup'
   | 'pgdn'
   | 'backspace'
@@ -84,7 +85,7 @@ export class Input {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const printable = e.key.length === 1;
-      const k = this.textMode && printable ? null : mapKey(e.key);
+      const k = this.textMode && printable ? null : mapKey(e.key, e.shiftKey);
       this.pendingAny = true;
       this.lastDevice = 'keyboard';
       if (k) {
@@ -158,7 +159,7 @@ export class Input {
   }
 }
 
-function mapKey(key: string): Key | null {
+function mapKey(key: string, shift = false): Key | null {
   switch (key) {
     case 'ArrowUp':
     case 'w':
@@ -182,7 +183,7 @@ function mapKey(key: string): Key | null {
     case 'Escape':
       return 'back';
     case 'Tab':
-      return 'tab';
+      return shift ? 'backtab' : 'tab';
     case 'PageUp':
       return 'pgup';
     case 'PageDown':

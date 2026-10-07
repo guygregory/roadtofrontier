@@ -1,4 +1,4 @@
-import { AREA, AREAS, AreaId, AZURE_ZERO, CFG, DISTRIBUTOR, FRONTIER, OFFER, OFFERS, PS_FEE, SPEC } from './data';
+import { AREA, AREAS, AreaId, areaName, AZURE_ZERO, CFG, DISTRIBUTOR, FRONTIER, OFFER, OFFERS, PS_FEE, SPEC } from './data';
 import { credits, fyOf, money, pct, qOf } from './format';
 import {
   acquire,
@@ -94,7 +94,7 @@ export const ACTIONS: ActionDef[] = [
       spend(s, intense ? 55 : 30);
       s.q.capacityLoss += intense ? 0.06 : 0.03;
       const g = certGain(s, a, intense ? 8 : 4);
-      return `${AREA[a].short} bootcamp complete: {g}+${g.inter} intermediate, +${g.adv} advanced{/} certifications.`;
+      return `${AREA[a].label} bootcamp complete: {g}+${g.inter} intermediate, +${g.adv} advanced{/} certifications.`;
     },
   },
   {
@@ -144,8 +144,8 @@ export const ACTIONS: ActionDef[] = [
           id: o.id,
           label: `${o.name}${o.frontier ? ' ★' : ''}`,
           cost: 0,
-          hint: `${AREA[o.area].short}. ${money(cost)}/qtr for ~${q} qtrs`,
-          disabled: s.areas[o.area].inter < 2 ? `Needs 2+ ${AREA[o.area].short} certs` : undefined,
+          hint: `${AREA[o.area].label}. ${money(cost)}/qtr for ~${q} qtrs`,
+          disabled: s.areas[o.area].inter < 2 ? `Needs 2+ ${AREA[o.area].label} certs` : undefined,
         };
       }),
     apply: (s, opt) => {
@@ -216,7 +216,7 @@ export const ACTIONS: ActionDef[] = [
       s.q.projectBoost[a] = (s.q.projectBoost[a] ?? 0) + 0.1;
       s.q.leads[a] = (s.q.leads[a] ?? 0) + n;
       s.q.workshopRevenue += Math.round(n * 12 * boost);
-      return `${n} funded ${AREA[a].short} workshop${n > 1 ? 's' : ''} approved${n === 2 ? ' (limited eligibility without the designation)' : ''}. Microsoft pays ${money(Math.round(n * 12 * boost))}.`;
+      return `${n} funded ${AREA[a].label} workshop${n > 1 ? 's' : ''} approved${n === 2 ? ' (limited eligibility without the designation)' : ''}. Microsoft pays ${money(Math.round(n * 12 * boost))}.`;
     },
   },
   {
@@ -245,7 +245,7 @@ export const ACTIONS: ActionDef[] = [
         adjRep(s, 2);
         s.q.keyBonus += 0.08;
       }
-      return `Event booked in ${AREA[a].short}: +${leads} leads expected. ${fromCoop > 0 ? `${money(fromCoop)} paid from co-op funds.` : 'Paid in cash (no co-op funds left).'}`;
+      return `Event booked in ${AREA[a].label}: +${leads} leads expected. ${fromCoop > 0 ? `${money(fromCoop)} paid from co-op funds.` : 'Paid in cash (no co-op funds left).'}`;
     },
   },
   {
@@ -318,9 +318,10 @@ export const ACTIONS: ActionDef[] = [
       const out: ActionOption[] = [];
       for (const c of cats) {
         const done = s.nominations.some((n) => n.fy === fy && n.category === c);
-        const name = c === 'frontier' ? 'Frontier AI Transformation' : AREA[c].short;
-        out.push({ id: `${c}|std`, label: `${name} (standard)`, cost: 12, hint: `Est. chance ${pct(potyChance(s, c, false))}`, disabled: done ? 'Already nominated' : undefined });
-        out.push({ id: `${c}|premium`, label: `${name} (premium)`, cost: 30, hint: `Video case study. ${pct(potyChance(s, c, true))}`, disabled: done ? 'Already nominated' : undefined });
+        // Option labels fit 25 characters: full names where they fit, shorter ones where they don't.
+        const name = (suffix: string) => (c === 'frontier' ? 'Frontier AI' : areaName(c, 25 - suffix.length));
+        out.push({ id: `${c}|std`, label: `${name(' (standard)')} (standard)`, cost: 12, hint: `Est. chance ${pct(potyChance(s, c, false))}`, disabled: done ? 'Already nominated' : undefined });
+        out.push({ id: `${c}|premium`, label: `${name(' (premium)')} (premium)`, cost: 30, hint: `Video case study. ${pct(potyChance(s, c, true))}`, disabled: done ? 'Already nominated' : undefined });
       }
       return out;
     },
@@ -543,7 +544,7 @@ export function hireArchitect(s: GameState, area: AreaId): string {
   s.hiresThisQuarter++;
   s.tech++;
   addCerts(s, area, 0, 1);
-  return `Hired a certified ${AREA[area].short} architect (+1 advanced cert).`;
+  return `New ${areaName(area, 15)} architect: +1 advanced cert.`;
 }
 
 export function fireStaff(s: GameState, kind: 'tech' | 'sales', n: number): string {

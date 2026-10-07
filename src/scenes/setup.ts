@@ -4,7 +4,7 @@ import { C } from '../engine/palette';
 import { text, paragraph } from '../engine/font';
 import { panel, ui } from '../engine/ui';
 import { SPR } from '../engine/sprites';
-import { AREA, DIFFICULTY, Difficulty, HERITAGES } from '../game/data';
+import { AREA, areaName, DIFFICULTY, Difficulty, HERITAGES } from '../game/data';
 import { newGame } from '../game/state';
 import { background, footer, header, keyHint } from './common';
 import { PlanScene } from './plan';
@@ -91,7 +91,7 @@ export class SetupScene implements Scene {
     const h = HERITAGES[idx >= 0 ? idx : 0];
     g.rect(188, 74, 118, 100, C.NAVY);
     g.frame(188, 74, 118, 100, AREA[h.area].colour);
-    text(g, AREA[h.area].short, 194, 79, AREA[h.area].colour, { bold: true });
+    text(g, areaName(h.area, 16).toUpperCase(), 194, 79, AREA[h.area].colour, { bold: true });
     paragraph(g, h.blurb, 194, 92, 108, C.WHITE, 10);
     paragraph(g, AREA[h.area].blurb, 194, 136, 108, C.LSLATE, 9);
     paragraph(g, 'Tip: Frontier Partner needs Security AND an AI designation, plus Modern Work skills for Copilot.', 14, 182, 290, C.CYAN, 10);
@@ -124,7 +124,7 @@ export class SetupScene implements Scene {
     text(g, 'No-reply', 38, 110, C.GREY, { align: 'center' });
     const msg =
       `{c}From:{/} MAICPP (no-reply)\n{c}Subject:{/} Welcome, {y}${this.name}{/}!\n\n` +
-      `You join as a Network member on {c}1 July 2026{/} (FY27), with a head start in {y}${AREA[her.area].short}{/}.\n\n` +
+      `You join as a Network member on {c}1 July 2026{/} (FY27), with a head start in {y}${AREA[her.area].label}{/}.\n\n` +
       `Reach a Partner Capability Score of 70 to become a {g}Solutions Partner{/}, earn {g}specializations{/}, then reach {y}Frontier Partner{/} or win {y}Partner of the Year{/}. There is no deadline - but stay solvent and play by the rules, or lose your membership.\n\n` +
       `{d}Automated message. Please do not reply.{/}`;
     paragraph(g, msg, 72, 48, 236, C.WHITE, 10);

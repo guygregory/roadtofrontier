@@ -9,7 +9,7 @@ Partner**, **Specialized** and finally **Frontier Partner**.
 Everything is drawn into a 320×256 PAL "low-res" framebuffer with a 32-colour 12-bit
 palette, copper-bar gradients, a hand-made bitmap font, pixel-art icons, a Lotus-style
 raster road, a sine scroller and a 4-channel chiptune soundtrack synthesised live with
-Web Audio. No game engine and no binary assets.
+Web Audio, with a new in-game tune every financial year. No game engine and no binary assets.
 
 ## Playing
 
@@ -20,6 +20,9 @@ Web Audio. No game engine and no binary assets.
 - **Mouse**: click menu items. Right-click or Esc goes back.
 - **Keyboard**: arrows/WASD to move, Enter/Space to select, Esc to go back, number keys
   for quick picks. **M** toggles music, **F** toggles fullscreen.
+- **Partner Center**: ↑/↓ pick a designation or specialization, ←/→ switch between the
+  list and the audit booking buttons, **Tab** / **Shift+Tab** switch between the
+  Solutions Partner, Specializations and Frontier tabs.
 - Progress is autosaved at the start of every quarter. Use **CONTINUE** on the title
   screen, or save to one of three slots from the in-game **GAME MENU**.
 
@@ -55,12 +58,33 @@ year after year, until you win or lose. Winning sooner earns a bigger score.
 | --- | --- |
 | Before you join CSP | Automated **MAICPP programme emails** (no-reply) |
 | CSP Indirect Reseller | **Sam**, your account manager at your distributor (Indirect Provider) |
-| Managed Partner List | **Alex**, your Microsoft Partner Development Manager (PDM) |
+| Managed Partner List | **Alex**, your Microsoft Partner Development Manager (PDM), at first |
 
 Microsoft adds you to the **Managed Partner List** at the start of the FY after you earn
 your **second specialization**. CSP Direct Bill partners buy direct from Microsoft, so they
 hear from the programme by email until then. Your PDM brings extra co-sell referrals and
 champions your Partner of the Year nominations.
+
+PDMs move on. Every 2–4 years, at the start of an FY, your PDM leaves Microsoft, moves to a
+new role within Microsoft or is realigned to a different partner, and **Priya**, **Kwame**,
+**Mei**, **Aisha** or **Diego** takes over. Everyone gets a turn before anyone comes back
+(except those who left Microsoft). A new PDM introduces themselves in your FY briefing;
+the change has no effect on your business.
+
+### Music
+
+The title tune is followed by a different in-game tune each financial year, in the spirit of
+90s city-builder soundtracks:
+
+| Year | Tune | Style |
+| --- | --- | --- |
+| FY27, FY31, FY35… | Partner Journey | The original D minor theme, with Amiga-style arpeggios |
+| FY28, FY32… | Downtown Development | Swing in F: walking bass, ride cymbal and Charleston piano |
+| FY29, FY33… | Bossa Budget | Bossa nova in D minor: flute lead, rim-click clave and shaker |
+| FY30, FY34… | Night Shift | Slow funk in G minor: slap bass, e-piano stabs and arpeggios |
+
+Each variation opens with the main theme's rising motif. The tune changes when you start
+planning the new year, and the FY briefing shows its title.
 
 ### Winning and losing
 
@@ -109,9 +133,11 @@ node scripts/smoke2.mjs   # year end, endings, hall of fame, help, credits
 node scripts/smoke3.mjs   # plays quarter after quarter through the UI, past FY31, checking for runtime errors
 node scripts/smoke4.mjs   # late-game screens (designations, specializations, charts)
 node scripts/smoke5.mjs   # advisors, CSP after enrolling, Azure credits & customer zero, Partner Success renewal, FY32
+node scripts/smoke6.mjs   # Partner Center keys, area names, PDM portraits and changes, a tune per FY
 ```
 
-Screenshots are written to `screenshots/`.
+Screenshots are written to `screenshots/`. `smoke6.mjs` also renders each FY tune offline,
+checks its level and saves it as `screenshots/music/*.wav`.
 
 ### Project layout
 
@@ -124,8 +150,9 @@ src/
             state, save, score, bot (balance-testing AI)
   scenes/   boot, title, setup, plan, event, hub, actions, programmes, partnercenter, company,
             customers, reports, report, yearend, ending, hiscore, help, credits, load, gamemenu
-tests/      rules.test.ts (rules, simulation, actions, events, benefits, advisors), balance.test.ts (bot
-            simulations), text.test.ts (on-screen text fits its panels)
+tests/      rules.test.ts (rules, simulation, actions, events, benefits, advisors, PDMs, area names),
+            balance.test.ts (bot simulations), text.test.ts (on-screen text fits its panels),
+            music.test.ts (songs are well formed and in key)
 ```
 
 Game logic is pure, deterministic TypeScript driven by a seeded RNG stored in the save, so it is

@@ -2,12 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { wrap } from '../src/engine/font';
 import { advisorTips } from '../src/scenes/advisor';
 import { PAGES } from '../src/scenes/help';
-import { ACTIONS, actionBlocked } from '../src/game/actions';
-import { OFFERS } from '../src/game/data';
+import { ACTIONS, actionBlocked, performAction } from '../src/game/actions';
+import { AREAS, OFFERS, SPECS } from '../src/game/data';
 import { EVENTS } from '../src/game/events';
 import { money } from '../src/game/format';
 import { newGame } from '../src/game/state';
 import type { GameState } from '../src/game/types';
+import { specDetail } from '../src/scenes/partnercenter';
 
 /** States that trigger as many advisor tips and event variants as possible, for each kind of advisor. */
 function busyStates(): GameState[] {
@@ -17,7 +18,10 @@ function busyStates(): GameState[] {
       const s = newGame({ company: 'Agnus Advisory Ltd', heritage: 'mw', difficulty: 'normal', seed: 5 + q });
       s.turn = 4 + q;
       if (kind !== 'program') s.csp = kind === 'direct' ? 'direct' : 'indirect';
-      if (kind === 'pdm') s.mpl = true;
+      if (kind === 'pdm') {
+        s.mpl = true;
+        s.flags.pdm = q + 1; // Priya, Kwame, Mei, Aisha
+      }
       s.negativeQuarters = q % 2;
       s.cash = 10;
       s.coop = 30;
@@ -94,6 +98,56 @@ describe('text fits on screen', () => {
           expect(wrap(outcome, 280).length, `${ev.id} outcome: ${outcome}`).toBeLessThanOrEqual(5);
         });
       }
+    }
+  });
+
+  it('specialization details never run into the booking buttons or off the panel', () => {
+    const fresh = newGame({ company: 'Layout Co', heritage: 'sec', difficulty: 'normal', seed: 9 });
+    const all = clone(fresh);
+    all.designations = AREAS.map((area) => ({ area, since: 0, renewAt: 8 }));
+    const held = clone(all);
+    held.specs = SPECS.map((sp) => ({ id: sp.id, since: 0, renewAt: 4, renewals: 0 }));
+    const pending = clone(all);
+    pending.audits = SPECS.map((sp) => ({ kind: 'spec' as const, spec: sp.id, chance: 0.5 }));
+    for (const s of [fresh, all, held, pending]) {
+      for (const sp of SPECS) {
+        const d = specDetail(s, sp);
+        expect(d.bottom, `${sp.id}: ${d.lines.map((l) => l.text).join(' | ')}`).toBeLessThanOrEqual(d.limit);
+      }
+    }
+    // Where it fits, Modern Work is written in full.
+    const copilot = specDetail(all, SPECS.find((x) => x.id === 'copilot')!);
+    expect(copilot.lines.map((l) => l.text).join(' ')).toContain('Modern Work');
+  });
+});
+
+describe('wording', () => {
+  // "Modern Work" may be abbreviated to MW in tight spaces, but never to "Modern".
+  const shortened = /\bMODERN\b|\bModern\b(?! Work)/;
+  const check = (t: string, where: string) => expect(shortened.test(t), `${where}: ${t}`).toBe(false);
+
+  it('never shortens Modern Work to "Modern"', () => {
+    for (const base of busyStates()) {
+      for (const tip of advisorTips(base)) check(tip, 'tip');
+      for (const ev of EVENTS) {
+        const s = clone(base);
+        const data = ev.prepare ? ev.prepare(s) : { area: 'modern', n: 2, name: 'Contoso', p: 0.5, keyId: s.key[0]?.id };
+        if (data === null) continue;
+        check(ev.text(s, data), ev.id);
+        for (const c of ev.choices(s, data)) {
+          check(`${c.label} ${c.hint ?? ''} ${c.disabled ?? ''}`, ev.id);
+          if (!c.disabled) check(c.apply(clone(s), data), `${ev.id} outcome`);
+        }
+      }
+      for (const a of ACTIONS) {
+        check(`${a.name} ${a.blurb} ${actionBlocked(base, a) ?? ''}`, a.id);
+        for (const o of a.options(base)) {
+          check(`${o.label} ${o.hint ?? ''} ${o.disabled ?? ''}`, `${a.id}/${o.id}`);
+          if (!o.disabled && !actionBlocked(base, a)) check(performAction(clone(base), a.id, o.id, 'modern'), `${a.id}/${o.id} result`);
+        }
+      }
+      // Lines are joined back up: a line break inside "Modern Work" is not an abbreviation.
+      for (const sp of SPECS) check(specDetail(base, sp).lines.map((l) => l.text).join(' '), sp.id);
     }
   });
 });

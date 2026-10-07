@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { newGame, migrateState } from '../src/game/state';
-import { AREAS, AREA, AZURE_ZERO, OFFERS, PS_FEE, SPEC, SPECS, FRONTIER } from '../src/game/data';
+import { AREAS, AREA, areaList, areaName, AZURE_ZERO, OFFERS, PDM_CHANGE_REASONS, PDMS, PS_FEE, SPEC, SPECS, FRONTIER } from '../src/game/data';
 import { pcs, canPurchaseDesignation, specRequirements, specQualified, specUnlocked, frontierQualified, frontierRequirements, apMax, azureAllowance } from '../src/game/rules';
 import { beginQuarter, endQuarter, licenceRelief } from '../src/game/sim';
 import {
@@ -17,7 +17,7 @@ import {
   buyBenefits,
   setBenefitsRenewal,
 } from '../src/game/actions';
-import { advisorKind } from '../src/game/advisor';
+import { advisor, advisorKind, assignFirstPdm, currentPdm, rotatePdm } from '../src/game/advisor';
 import { EVENTS, EVENT, resolveEvent } from '../src/game/events';
 import { monthsLabel, turnLabel, money } from '../src/game/format';
 import { removeTech, certGain } from '../src/game/ops';
@@ -564,5 +564,109 @@ describe('saves', () => {
     const q4 = oldSave(4, [2, 3]); // earned in FY27 Q4, saved at the FY28 plan
     expect(q4.mpl).toBe(true);
     expect(q4.flags.mplSince).toBe(4);
+  });
+});
+describe('Partner Development Managers', () => {
+  const managed = (): GameState => {
+    const s = fresh();
+    s.mpl = true;
+    s.flags.mplSince = 4;
+    assignFirstPdm(s, 4);
+    return s;
+  };
+  it('Alex is your first PDM when you join the Managed Partner List', () => {
+    const s = managed();
+    expect(currentPdm(s).name).toBe('Alex');
+    expect(advisor(s).title).toBe('ALEX, YOUR PDM');
+    expect(advisor(s).sprite).toBe('pdm:alex');
+    expect([12, 16, 20]).toContain(s.flags.pdmNext);
+  });
+  it('the PDM changes every 2-4 years at the start of an FY, for one of three reasons, to someone new', () => {
+    const s = managed();
+    const changes: number[] = [];
+    const seen = new Set([s.flags.pdm]);
+    for (let fyStart = 8; fyStart <= 124; fyStart += 4) {
+      const prev = s.flags.pdm ?? 0;
+      const notice = rotatePdm(s, fyStart);
+      if (!notice) continue;
+      changes.push(fyStart);
+      expect(s.flags.pdm).not.toBe(prev);
+      expect(notice).toContain(PDMS[prev].name);
+      expect(notice).toContain(`${currentPdm(s).name} looks after you from FY${27 + fyStart / 4}`);
+      expect(PDM_CHANGE_REASONS.some((r) => notice.includes(r))).toBe(true);
+      expect(s.flags.pdmSince).toBe(fyStart);
+      seen.add(s.flags.pdm);
+    }
+    changes.forEach((c, i) => expect([8, 12, 16]).toContain(c - (i ? changes[i - 1] : 4)));
+    expect(changes.length).toBeGreaterThanOrEqual(7);
+    expect(seen.size).toBe(PDMS.length); // everyone takes a turn before anyone comes back
+  });
+  it('a PDM who left Microsoft never comes back', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const s = managed();
+      s.rng = seed;
+      const left = new Set<number>();
+      for (let fyStart = 8; fyStart <= 400; fyStart += 4) {
+        const prev = s.flags.pdm ?? 0;
+        if (!rotatePdm(s, fyStart)) continue;
+        if (left.size < PDMS.length - 1) expect(left.has(s.flags.pdm ?? 0)).toBe(false);
+        if (s.flags.pdmReason === 0) left.add(prev);
+      }
+    }
+  });
+  it('only managed partners have a PDM', () => {
+    const s = fresh();
+    expect(rotatePdm(s, 8)).toBeNull();
+    expect(s.flags.pdm).toBeUndefined();
+  });
+  it('a new PDM makes no difference to the business', () => {
+    const s = managed();
+    s.flags.pdmNext = 8;
+    const strip = (x: GameState) => JSON.stringify({ ...x, flags: undefined, rng: undefined });
+    const before = strip(s);
+    expect(rotatePdm(s, 8)).toBeTruthy();
+    expect(strip(s)).toBe(before);
+  });
+  it('the change is announced in the year-end review', () => {
+    const s = managed();
+    s.flags.pdmNext = 8;
+    s.turn = 7;
+    beginQuarter(s);
+    s.pending = [];
+    s.cash = 5000;
+    endQuarter(s);
+    expect(s.yearEnd?.notices.join(' ')).toMatch(/New PDM:.*Alex/);
+    expect(currentPdm(s).name).not.toBe('Alex');
+    expect(s.flags.pdmSince).toBe(8);
+  });
+  it('saves from before PDMs rotated start the clock at the next FY', () => {
+    const s = fresh();
+    s.mpl = true;
+    expect(rotatePdm(s, 8)).toBeNull();
+    expect([16, 20, 24]).toContain(s.flags.pdmNext);
+    expect(currentPdm(s).name).toBe('Alex');
+  });
+});
+
+describe('area names', () => {
+  it('uses full names where they fit and MW only where space is very tight', () => {
+    expect(areaName('modern')).toBe('Modern Work');
+    expect(areaName('modern', 11)).toBe('Modern Work');
+    expect(areaName('modern', 10)).toBe('MW');
+    expect(areaName('dai', 20)).toBe('Digital & App Innov.');
+    expect(areaList(['modern', 'security'])).toBe('Modern Work or Security');
+    expect(areaList(['bizapps', 'dai', 'modern'], 30)).toBe('BIZAPPS, DAI or MW');
+  });
+  it('designation notices use the full name', () => {
+    const s = fresh();
+    maxArea(s, 'modern');
+    purchaseDesignation(s, 'modern');
+    s.turn = 4;
+    beginQuarter(s);
+    s.pending = [];
+    s.cash = 5000;
+    maxArea(s, 'modern');
+    const r = endQuarter(s);
+    expect(r.notices.join(' ')).toContain('Solutions Partner for Modern Work renewed');
   });
 });

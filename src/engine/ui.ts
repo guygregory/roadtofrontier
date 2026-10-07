@@ -65,7 +65,7 @@ export class UI {
       this.wantFocusLast = false;
     }
     const inp = this.input;
-    const prev = inp.take('up') || inp.take('left');
+    const prev = inp.take('up') || inp.take('left') || inp.take('backtab');
     const next = inp.take('down') || inp.take('right') || inp.take('tab');
     if (prev) {
       this.focus = (this.focus - 1 + n) % n;
@@ -133,7 +133,7 @@ export class UI {
     } else if (style === 'box' || style === 'tab') {
       const fill = disabled ? C.NEARBLACK : opts.selected ? C.BLUE : hover ? C.ROYAL : C.SLATE;
       g.bevel(x, y, w, h, fill, disabled ? C.DGREY : C.LSLATE, C.BLACK, false);
-      if (hover && !disabled) g.frame(x - 1, y - 1, w + 2, h + 2, C.YELLOW);
+      if (hover) g.frame(x - 1, y - 1, w + 2, h + 2, disabled ? C.GREY : C.YELLOW);
       const col = disabled ? C.GREY : opts.colour ?? C.WHITE;
       let cx = x + w / 2;
       if (opts.icon) {

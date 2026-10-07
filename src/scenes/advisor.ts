@@ -18,7 +18,7 @@ export function advisorTips(s: GameState): string[] {
 
   if (s.negativeQuarters > 0) tips.push('{r}CASH CRISIS!{/} Get cash above zero this quarter: cut programmes, borrow, or let staff go.');
   else if (s.cash < burn * 1.5 && burn > 0) tips.push(`{o}Cash is tight.{/} You burn about ${money(burn)} a quarter. Trim programmes or grow revenue.`);
-  for (const a of AREAS) if (canPurchaseDesignation(s, a)) tips.push(`{g}You qualify!{/} Buy the ${AREA[a].short} Solutions Partner designation in PARTNER CENTER.`);
+  for (const a of AREAS) if (canPurchaseDesignation(s, a)) tips.push(`{g}You qualify!{/} Buy the ${AREA[a].label} Solutions Partner designation in PARTNER CENTER.`);
   if (frontierQualified(s) && !s.audits.some((x) => x.kind === 'frontier')) tips.push('{y}You meet every Frontier requirement!{/} Book the Frontier Partner audit in PARTNER CENTER.');
   const ready = SPECS.filter((sp) => sp.validation !== 'auto' && !hasSpec(s, sp.id) && specUnlocked(s, sp) && specQualified(s, sp));
   if (ready.length) tips.push(`{g}${ready[0].name}{/} is ready for ${ready[0].validation === 'audit' ? 'audit' : 'customer references'}. See PARTNER CENTER.`);

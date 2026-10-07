@@ -3,8 +3,9 @@ import type { Input } from './engine/input';
 import { ui, panel, dim } from './engine/ui';
 import { text, wrap, LINE_H } from './engine/font';
 import { icon } from './engine/sprites';
-import { audio } from './engine/audio';
+import { audio, gameSong } from './engine/audio';
 import { C } from './engine/palette';
+import { fyOf } from './game/format';
 import type { GameState } from './game/types';
 import { saveGame, saveSettings, Settings } from './game/save';
 
@@ -63,7 +64,8 @@ export class App {
     this.input.textMode = false;
     if (scene.music !== undefined) {
       if (scene.music === '') audio.stopSong();
-      else audio.playSong(scene.music);
+      // 'hub' means the in-game music: each financial year has its own tune.
+      else audio.playSong(scene.music === 'hub' && this.state ? gameSong(fyOf(this.state.turn)) : scene.music);
     }
     scene.enter?.(this);
   }

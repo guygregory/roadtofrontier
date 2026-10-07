@@ -170,13 +170,17 @@ fully unit-testable without a browser.
 
 ## Deploying to GitHub Pages
 
-1. Push this folder to a GitHub repository (default branch `main`).
+1. Push this folder to `https://github.com/guygregory/roadtofrontier` (default branch `main`).
 2. In the repository, go to **Settings → Pages** and set **Source** to **GitHub Actions**.
 3. Push to `main`, or run the **Deploy to GitHub Pages** workflow manually. It tests,
    builds and publishes `dist/`.
+4. Set the Pages **Custom domain** to `frontier.guygregory.com` and enable **Enforce HTTPS**
+   once GitHub has provisioned the certificate. Its DNS CNAME points to `guygregory.github.io`.
 
 `vite.config.ts` uses `base: './'`, so the build works under any repository path
 (`https://<user>.github.io/<repo>/`).
+The `public/CNAME` file is copied into `dist/` during the build; GitHub Pages must also
+have the custom domain configured in its settings when using an Actions deployment.
 
 ## Credits & notes
 

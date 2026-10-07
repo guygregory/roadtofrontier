@@ -20,6 +20,9 @@ Web Audio, with a new in-game tune every financial year. No game engine and no b
 - **Mouse**: click menu items. Right-click or Esc goes back.
 - **Keyboard**: arrows/WASD to move, Enter/Space to select, Esc to go back, number keys
   for quick picks. **M** toggles music, **F** toggles fullscreen.
+- **Phones & tablets**: the game always plays in landscape and fills the screen height. Tap
+  menu items directly, or use the on-screen D-pad (left) and red button (right, = Enter).
+  Add the page to your home screen to play it full screen as a web app.
 - **Partner Center**: ↑/↓ pick a designation or specialization, ←/→ switch between the
   list and the audit booking buttons, **Tab** / **Shift+Tab** switch between the
   Solutions Partner, Specializations and Frontier tabs.

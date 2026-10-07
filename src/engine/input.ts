@@ -44,10 +44,16 @@ export class Input {
   private pendingAny = false;
   private listeners: Array<() => void> = [];
 
-  constructor(canvas: HTMLCanvasElement, private scaleRef: () => number) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    private scaleRef: () => number,
+    /** True when the screen is shown rotated 90deg clockwise (mobile held in portrait). */
+    private rotatedRef: () => boolean = () => false,
+  ) {
     const toLogical = (e: { clientX: number; clientY: number }) => {
       const r = canvas.getBoundingClientRect();
       const s = this.scaleRef();
+      if (this.rotatedRef()) return { x: Math.floor((e.clientY - r.top) / s), y: Math.floor((r.right - e.clientX) / s) };
       return { x: Math.floor((e.clientX - r.left) / s), y: Math.floor((e.clientY - r.top) / s) };
     };
     const onMove = (e: PointerEvent) => {
@@ -112,6 +118,13 @@ export class Input {
       () => window.removeEventListener('keydown', onKey),
       () => canvas.removeEventListener('contextmenu', onContext),
     );
+  }
+
+  /** Inject a key press from an on-screen control (mobile D-pad / fire button). */
+  press(k: Key): void {
+    this.pendingKeys.push(k);
+    this.pendingAny = true;
+    this.lastDevice = 'keyboard';
   }
 
   /** Move pending DOM events into this frame's state. Call once at frame start. */

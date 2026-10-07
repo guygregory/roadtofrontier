@@ -13,6 +13,7 @@ import { resumeGame } from './flow';
 import { clearLegacySaves, legacySave } from '../game/save';
 import { turnLabel } from '../game/format';
 import type { GameState } from '../game/types';
+import { homeScreenHint, isMobile, isStandalone } from '../mobile';
 
 const SCROLL =
   '*** ROAD TO FRONTIER *** GROW YOUR MICROSOFT PARTNER FROM NETWORK MEMBER TO SOLUTIONS PARTNER, SPECIALIZED AND FINALLY FRONTIER PARTNER ... ' +
@@ -60,6 +61,8 @@ export class TitleScene implements Scene {
     titleText(g, 'FRONTIER', 160, 34, 3, ['ff6', 'fb0', 'f93', 'f52', 'b22'], t, 2);
     msLogo(g, 140, 66, 8, 2);
     text(g, 'A MICROSOFT PARTNER JOURNEY', 160, 88, C.CREAM, { align: 'center', shadow: C.BLACK });
+    // On phones/tablets, suggest installing to the home screen for a full-screen web app.
+    if (isMobile && !isStandalone()) text(g, homeScreenHint(), 160, 100, Math.floor(t * 2) % 2 ? C.YELLOW : C.WHITE, { align: 'center', shadow: C.BLACK });
 
     // Menu panel over the road
     const items: [string, () => void][] = [

@@ -7,6 +7,8 @@ import { ui } from './engine/ui';
 import { loadSettings } from './game/save';
 import { BootScene } from './scenes/boot';
 import { toggleFullscreen } from './fullscreen';
+import { isMobile, lockLandscape } from './mobile';
+import { initTouchpad } from './touchpad';
 import { ShareScene } from './scenes/share';
 import { EndingScene } from './scenes/ending';
 import { YearEndScene } from './scenes/yearend';
@@ -22,11 +24,44 @@ import { EventScene } from './scenes/event';
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const stage = document.getElementById('stage') as HTMLDivElement;
 const crt = document.getElementById('crt') as HTMLDivElement;
+const shell = document.getElementById('shell') as HTMLDivElement;
+const root = document.documentElement;
+root.classList.toggle('mobile', isMobile);
 
 let scale = 1;
+let rotated = false;
+
+/**
+ * Mobile: always landscape (the game is turned sideways when the phone is held upright),
+ * filling the full height with the D-pad and fire button in the space either side.
+ */
+function resizeMobile(): void {
+  rotated = window.innerHeight > window.innerWidth;
+  root.classList.toggle('portrait', rotated);
+  const w = rotated ? window.innerHeight : window.innerWidth;
+  const h = rotated ? window.innerWidth : window.innerHeight;
+  const reserve = Math.min(180, Math.max(90, h * 0.3));
+  scale = Math.max(0.5, Math.min((w - 2 * reserve) / SCREEN_W, h / SCREEN_H));
+  const cw = Math.round(SCREEN_W * scale);
+  const ch = Math.round(SCREEN_H * scale);
+  const side = (w - cw) / 2;
+  shell.style.width = `${w}px`;
+  shell.style.height = `${h}px`;
+  shell.style.setProperty('--side', `${side}px`);
+  shell.style.setProperty('--pad', `${Math.round(Math.min(side * 0.85, h * 0.5, 200))}px`);
+  canvas.style.width = `${cw}px`;
+  canvas.style.height = `${ch}px`;
+  stage.style.width = `${cw}px`;
+  stage.style.height = `${ch}px`;
+  crt.style.backgroundSize = `100% ${Math.max(2, Math.round(scale))}px, 100% 100%`;
+}
 
 /** Integer scaling keeps every pixel crisp, like a real low-res display. */
 function resize(): void {
+  if (isMobile) {
+    resizeMobile();
+    return;
+  }
   const w = window.innerWidth;
   const h = window.innerHeight;
   // Allow non-integer scaling only on small screens where integer would be tiny.
@@ -43,10 +78,16 @@ function resize(): void {
 }
 
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', resize);
 resize();
 
 const g = new Gfx(canvas);
-const input = new Input(canvas, () => scale);
+const input = new Input(canvas, () => scale, () => rotated);
+if (isMobile) {
+  initTouchpad(input, () => rotated);
+  // Fullscreen / orientation lock need a user gesture.
+  window.addEventListener('pointerdown', lockLandscape, { once: true });
+}
 const settings = loadSettings();
 audio.musicOn = settings.music;
 audio.sfxOn = settings.sfx;
@@ -83,8 +124,8 @@ function loop(now: number): void {
     // Never let one bad frame kill the game loop.
     console.error(err);
   }
-  // Amiga-style mouse pointer
-  if (input.mx >= 0 && input.my >= 0 && input.mx < SCREEN_W && input.my < SCREEN_H && input.lastDevice === 'mouse') {
+  // Amiga-style mouse pointer (not on touch screens)
+  if (!isMobile && input.mx >= 0 && input.my >= 0 && input.mx < SCREEN_W && input.my < SCREEN_H && input.lastDevice === 'mouse') {
     g.blit(SPR.pointer, input.mx, input.my);
   }
   g.present();

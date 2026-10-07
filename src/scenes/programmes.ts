@@ -7,7 +7,7 @@ import { AREA, AREAS, AreaId, BETS, LEVEL_NAMES, PROGRAMMES, ProgrammeId } from 
 import { money } from '../game/format';
 import { forecastCosts, lastRevenue, overheadCost, programmeCost, offerDevCost } from '../game/sim';
 import { CFG } from '../game/data';
-import { cspFee, unifiedCost } from '../game/rules';
+import { unifiedCost } from '../game/rules';
 import { background, footer, header, requireState } from './common';
 import { HubScene } from './hub';
 
@@ -70,7 +70,6 @@ export class ProgrammesScene implements Scene {
       ['Programmes', programmeCost(s)],
       ['Offer dev.', offerDevCost(s)],
       ['Unified', unifiedCost(s)],
-      ['CSP fee (1%)', cspFee(s)],
       ['Interest/other', s.debt * CFG.interest + (s.flags.dividends ?? 0) + (s.flags.integration ? 20 : 0)],
     ];
     rows.forEach(([l, v], i) => {

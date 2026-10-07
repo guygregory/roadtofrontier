@@ -54,7 +54,7 @@ export class CompanyScene implements Scene {
 
     // Programme membership & services
     panel(g, 2, 150, 316, 94, 'MEMBERSHIP & SERVICES');
-    const cspTxt = s.csp === 'none' ? 'Not enrolled' : s.csp === 'indirect' ? 'Indirect (1% fee)' : 'Direct Bill';
+    const cspTxt = s.csp === 'none' ? 'Not enrolled' : s.csp === 'indirect' ? 'Indirect Reseller' : 'Direct Bill';
     statusLine(g, 8, 165, 'CSP', cspTxt, s.csp === 'none' ? C.ORANGE : C.GREEN, 150);
     const psTxt = s.benefits === 'none' ? 'None' : s.benefits === 'core' ? 'Core' : 'Expanded';
     statusLine(g, 8, 174, 'Partner Success', psTxt, s.benefits !== 'none' && !s.benefitsRenew ? C.ORANGE : C.WHITE, 150);

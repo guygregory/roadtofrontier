@@ -248,9 +248,15 @@ export function unifiedCost(s: GameState): number {
   return s.unified ? unifiedPrice(s).quarterly : 0;
 }
 
-/** Indirect Provider fee this quarter: 1% of billed cloud for Indirect Resellers. */
-export function cspFee(s: GameState): number {
-  return s.csp === 'indirect' ? Math.round(cspBilled(s).total * CSP.indirectFee * 10) / 10 : 0;
+/** The Indirect Provider's margin share this quarter: 5% of CSP spend for Indirect Resellers. */
+export function distributorShare(s: GameState): number {
+  return s.csp === 'indirect' ? Math.round(cspBilled(s).total * CSP.distributorShare * 10) / 10 : 0;
+}
+
+/** Your CSP licence margin this quarter, after any distributor share. */
+export function cspMargin(s: GameState): number {
+  if (s.csp === 'none') return 0;
+  return cspBilled(s).total * CSP.margin[s.csp] - distributorShare(s);
 }
 
 /** What still stands between an Indirect Reseller and CSP Direct Bill (empty = eligible). */

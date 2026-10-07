@@ -13,7 +13,7 @@ export const PAGES: { title: string; icon: string; body: string }[] = [
       'You run a Microsoft partner. Starting on {c}1 July 2026{/} (FY27) as a {y}Network member{/}, grow through {g}Solutions Partner{/} designations and {g}specializations{/} to become a {y}Frontier Partner{/}.\n\n' +
       '{g}WIN:{/} pass the Frontier Partner audit, or win {y}Partner of the Year{/}.\n' +
       '{r}LOSE:{/} run out of cash two quarters running, or lose your MAICPP membership.\n\n' +
-      'There is {c}no time limit{/}: play carries on past FY31 until you win or lose. Win sooner for a bigger score.',
+      'Play continues {c}year after year{/} until you win or lose. Win sooner for a bigger score.',
   },
   {
     title: 'TURNS',
@@ -45,7 +45,7 @@ export const PAGES: { title: string; icon: string; body: string }[] = [
     icon: 'coin',
     body:
       'Revenue comes from services (limited by engineer {y}capacity{/}), repeatable offers, CSP licence margin and incentives. Keep {y}utilisation{/} under 100% or projects fail and customers leave.\n\n' +
-      '{c}CSP{/} has no sign-up fee: your distributor keeps 1% of CSP revenue. {c}Direct Bill{/} keeps it all, but needs $1M CSP revenue in 12 months, a designation and {c}Unified for Partners{/}.\n\n' +
+      '{c}CSP{/} has no sign-up fee: your distributor keeps a 5% margin share of CSP spend. {c}Direct Bill{/} keeps it all, but needs $1M CSP revenue in 12 months, a designation and {c}Unified for Partners{/}.\n\n' +
       'Certifications belong to people: when engineers leave, their certs go with them. Keep {y}morale{/} up!\n\n' +
       'Keep {y}compliance{/} high. Shortcuts may pay now but audits can remove your membership.',
   },
@@ -53,7 +53,7 @@ export const PAGES: { title: string; icon: string; body: string }[] = [
     title: 'ADVISORS & BENEFITS',
     icon: 'mail',
     body:
-      'At first only {c}MAICPP programme emails{/} advise you. Join {c}CSP{/} through a distributor and {y}Sam{/}, their account manager, takes over. Earn a {g}second specialization{/} and Microsoft adds you to its {y}Managed Partner List{/} next FY, with {y}Alex{/}, your own PDM. Every 2-4 years a new PDM takes over.\n\n' +
+      'At first only {c}MAICPP programme emails{/} advise you. Join {c}CSP{/} through a distributor and {y}Sam{/}, their account manager, takes over. Keep earning {g}designations{/} and {g}specializations{/} for more incentives, and Microsoft itself may take notice...\n\n' +
       'Partner Success, designations and specializations grant yearly {c}Azure credits{/} (they expire on 30 June). Use them to become {y}Customer Zero for Azure{/}, or pay cash.\n\n' +
       'Once you hold a designation you can {o}stop renewing Partner Success{/}: Solutions Partner benefits exceed it.',
   },

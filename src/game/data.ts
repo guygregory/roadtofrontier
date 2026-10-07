@@ -279,22 +279,24 @@ export const CFG = {
   offerBuildCost: 35,
   auditCost: 20,
   refCost: 3,
-  /** Wins before the end of FY31 (turn 20) earn a speed bonus; play itself has no time limit. */
+  /** Wins within the first 20 quarters earn a speed bonus. */
   speedTurns: 20,
 };
 
 // ---------------------------------------------------------------------------
-// CSP: Microsoft cloud resold to customers. Revenue figures are what customers are billed ($K/qtr);
-// the partner keeps a margin, and an Indirect Reseller pays its Indirect Provider a share.
+// CSP: Microsoft cloud resold to customers. Figures are what customers spend on Microsoft cloud
+// ($K/qtr), roughly a tenth of a services partner's revenue (10:1 services to Microsoft). The partner
+// keeps a margin; an Indirect Reseller shares 5% of CSP spend with its Indirect Provider (about 0.5%
+// of total revenue).
 
 export const CSP = {
   /** Billed cloud per quarter for each small customer / key account, before any downturn. */
-  billedPerCustomer: 6,
-  billedPerKey: 30,
-  /** Partner margin on billed cloud (Direct Bill buys at a better price and keeps more). */
-  margin: { indirect: 0.1, direct: 0.16 },
-  /** Indirect Provider fee for Indirect Resellers: 1% of billed cloud revenue. */
-  indirectFee: 0.01,
+  billedPerCustomer: 1.5,
+  billedPerKey: 7.5,
+  /** Partner margin on CSP spend before any distributor share (Direct Bill keeps it all). */
+  margin: { indirect: 0.15, direct: 0.2 },
+  /** Indirect Provider's margin share for Indirect Resellers: 5% of CSP spend. */
+  distributorShare: 0.05,
   /** Direct Bill: trailing-12-month CSP revenue of at least $1M (Partner Center requirement). */
   directRevenue: 1000,
 };

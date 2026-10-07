@@ -36,8 +36,7 @@ Web Audio, with a new in-game tune every financial year. No game engine and no b
 ### The journey
 
 You start on **1 July 2026**, the first day of Microsoft's **FY27**. Each turn is one
-fiscal quarter (Q1 = Jul–Sep). There is **no time limit**: play carries on past FY31,
-year after year, until you win or lose. Winning sooner earns a bigger score.
+fiscal quarter (Q1 = Jul–Sep). Play continues year after year until you win or lose. Winning sooner earns a bigger score.
 
 1. **FY planning (every July)**: choose a primary (and optional secondary) focus area,
    a strategic bet for the year, programme budgets (skilling, marketing, sales & co-sell,
@@ -66,12 +65,11 @@ year after year, until you win or lose. Winning sooner earns a bigger score.
 | --- | --- |
 | Before you join CSP | Automated **MAICPP programme emails** (no-reply) |
 | CSP Indirect Reseller | **Sam**, your account manager at your distributor (Indirect Provider) |
-| Managed Partner List | **Alex**, your Microsoft Partner Development Manager (PDM), at first |
+| Later... | Keep growing and Microsoft itself may take notice |
 
-Microsoft adds you to the **Managed Partner List** at the start of the FY after you earn
-your **second specialization**. CSP Direct Bill partners buy direct from Microsoft, so they
-hear from the programme by email until then. Your PDM brings extra co-sell referrals and
-champions your Partner of the Year nominations.
+Your distributor encourages Solutions Partner designations and specializations, which
+open up more partner incentives. CSP Direct Bill partners buy direct from Microsoft, so they
+hear from the programme by email. What happens next is a surprise.
 
 PDMs move on. Every 2–4 years, at the start of an FY, your PDM leaves Microsoft, moves to a
 new role within Microsoft or is realigned to a different partner, and **Priya**, **Kwame**,
@@ -108,7 +106,7 @@ planning the new year, and the FY briefing shows its title.
 | Solutions Partner designations (6 areas) | Purchase your first one when qualified; later areas enrol automatically. They renew yearly and only if you still score 70+. |
 | Specializations | Unlock only under the designations they align to. They need more certs, deployments and customers, then a third-party audit, a customer reference or automatic enrolment (Business Applications). |
 | Frontier Partner specialization | Needs Microsoft 365 Copilot, Data Security, Identity & Access Management, and AI Apps OR AI Platform specializations, plus 5 Frontier Transformation Engineers, 3 DP-600 holders and a passed audit. |
-| CSP | Joining as an Indirect Reseller (through an Indirect Provider) is free to sign up: the provider keeps **1% of your CSP revenue**. It adds licence margin, incentives and co-op funds, and makes every new customer count in PCS. Moving to **Direct Bill** wins back the 1% and a better margin, but (as in the real [Direct Bill requirements](https://learn.microsoft.com/partner-center/enroll/direct-partner-new-requirements)) needs **$1M of CSP revenue in the last 12 months**, a **Solutions Partner designation** and **Unified for Partners** (which you must then keep). |
+| CSP | Joining as an Indirect Reseller (through an Indirect Provider) is free to sign up: the distributor keeps a **5% margin share of your CSP spend** (about 0.5% of total revenue, assuming a 10:1 ratio of services to Microsoft revenue). It adds licence margin, incentives and co-op funds, and makes every new customer count in PCS. Moving to **Direct Bill** wins back the 5% share and a better margin, but (as in the real [Direct Bill requirements](https://learn.microsoft.com/partner-center/enroll/direct-partner-new-requirements)) needs **$1M of CSP revenue in the last 12 months**, a **Solutions Partner designation** and **Unified for Partners** (which you must then keep). |
 | Unified for Partners | Priced like the real support plan: **$5K a month minimum**, otherwise a share of trailing-12-month CSP revenue - Category A ($1M-50M) 4% Azure / 3% non-Azure, B ($50M-100M) 3% / 2%, C ($100M-500M) 2% / 1.5%, D ($500M+) 1.5% / 1%. |
 | Partner benefits & Azure credits | Yearly Azure bulk credits follow the MAICPP Benefits Guide (July 2026): Partner Success Core $2.4K / Expanded $5K; each Solutions Partner designation $4K (Business Applications, Modern Work) or $10K (Azure areas, Security); each specialization $14K (Azure, max 5), $6K (Business Applications or Modern Work, max 3) or $10K (Security, max 3), only with Solutions Partner benefits. Credits are granted on 1 July (or when a benefit is earned) and expire on 30 June. |
 | Partner Success vs Solutions Partner | Their internal-use licences overlap rather than stack, so once you hold a designation Partner Success only adds its Azure credits, and you can stop renewing it. |
@@ -139,7 +137,7 @@ Optional headless smoke tests (need Microsoft Edge or Chrome installed, plus a r
 ```bash
 node scripts/smoke.mjs    # new game -> plan -> events -> hub -> screens -> quarter report
 node scripts/smoke2.mjs   # year end, endings, sharing (LinkedIn/X, result card), title menu, help, credits
-node scripts/smoke3.mjs   # plays quarter after quarter through the UI, past FY31, checking for runtime errors
+node scripts/smoke3.mjs   # plays quarter after quarter through the UI over many years, checking for runtime errors
 node scripts/smoke4.mjs   # late-game screens (designations, specializations, charts)
 node scripts/smoke5.mjs   # advisors, CSP after enrolling, Azure credits & customer zero, Partner Success renewal, FY32
 node scripts/smoke6.mjs   # Partner Center keys, area names, PDM portraits and changes, a tune per FY

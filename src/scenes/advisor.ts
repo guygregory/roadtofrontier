@@ -28,17 +28,17 @@ export function advisorTips(s: GameState): string[] {
   if (kind === 'program') {
     if (s.csp === 'none')
       tips.push(`{c}Start selling Microsoft cloud!{/} Join CSP via a distributor such as ${DISTRIBUTOR.company} (ACTIONS).`);
-    if (s.csp === 'direct') tips.push('{c}Direct bill partners{/} hear from MAICPP by email. Two specializations put you on the Managed Partner List, with a PDM.');
+    if (s.csp === 'direct') tips.push('{c}Direct bill partners{/} hear from MAICPP by email. Specializations unlock more incentives and co-sell support.');
     tips.push(
       s.designations.length === 0
         ? '{c}Your Partner Capability Score was updated.{/} Check PARTNER CENTER to see how close you are to Solutions Partner.'
         : '{c}Your Partner Capability Score was updated.{/} Check PARTNER CENTER: designations only renew at 70+.',
     );
   } else if (kind === 'distributor') {
-    tips.push(`Earn a {y}second specialization{/} and Microsoft adds you to its Managed Partner List next FY, with a PDM. - ${DISTRIBUTOR.am}`);
+    tips.push(`Earn {y}Solutions Partner designations{/} and {y}specializations{/}: they open up more partner incentives and co-sell access. - ${DISTRIBUTOR.am}`);
     tips.push(`Our CSP team can help you claim {c}partner incentives{/}: Microsoft-funded customer workshops (ACTIONS). - ${DISTRIBUTOR.am}`);
     const gaps = directBillGaps(s);
-    if (gaps.length === 0) tips.push(`You qualify for {c}CSP Direct Bill{/}: better margins and no 1% fee, but no more distributor support. We'd miss you! - ${DISTRIBUTOR.am}`);
+    if (gaps.length === 0) tips.push(`You qualify for {c}CSP Direct Bill{/}: better margins and you keep the 5% share, but no more distributor support. We'd miss you! - ${DISTRIBUTOR.am}`);
     else if (gaps.length === 1 && !s.unified && s.designations.length > 0)
       tips.push(`You're over $1M CSP revenue a year. Add {c}Unified for Partners{/} and you can go {c}CSP Direct Bill{/}. - ${DISTRIBUTOR.am}`);
   } else {

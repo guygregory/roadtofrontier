@@ -161,7 +161,7 @@ export const ACTIONS: ActionDef[] = [
     title: (s) => (s.csp === 'none' ? 'Join CSP' : 'CSP Direct Bill'),
     icon: 'cart',
     ap: 1,
-    blurb: `Resell Microsoft cloud via ${DISTRIBUTOR.company}: margin, incentives, co-op funds, full PCS credit and an account manager, for 1% of CSP revenue. Direct Bill: $1M/yr, a designation and Unified.`,
+    blurb: `Resell Microsoft cloud via ${DISTRIBUTOR.company}: margin, incentives, co-op funds, full PCS credit and an account manager, sharing 5% margin with them. Direct Bill: $1M/yr, a designation and Unified.`,
     available: (s) => {
       if (s.csp === 'direct') return 'Already a CSP Direct Bill partner';
       if (s.csp === 'indirect') {
@@ -173,7 +173,7 @@ export const ACTIONS: ActionDef[] = [
     options: (s) =>
       s.csp === 'none'
         ? [
-            { id: 'indirect', label: 'CSP Indirect Reseller', cost: 0, hint: 'No sign-up fee, then 1% of CSP revenue' },
+            { id: 'indirect', label: 'CSP Indirect Reseller', cost: 0, hint: 'No sign-up fee. 5% margin share' },
             { id: 'direct', label: 'CSP Direct Bill', cost: 60, disabled: 'Join as an Indirect Reseller first' },
           ]
         : [
@@ -181,7 +181,7 @@ export const ACTIONS: ActionDef[] = [
               id: 'direct',
               label: 'CSP Direct Bill',
               cost: 60,
-              hint: 'Better margin, no 1% fee. You leave your distributor',
+              hint: 'Better margin, keep the 5% share. You leave your distributor',
               disabled: s.csp === 'direct' ? 'Already Direct Bill' : directBillGaps(s).length ? `Needs ${directBillGaps(s)[0]}` : undefined,
             },
           ],
@@ -189,12 +189,12 @@ export const ACTIONS: ActionDef[] = [
       if (opt === 'indirect') {
         s.csp = 'indirect';
         const who = s.mpl ? '' : ` ${DISTRIBUTOR.am}, your account manager there, will advise you from now on.`;
-        return `{g}You are now a CSP Indirect Reseller with ${DISTRIBUTOR.company}!{/} Licence margin, incentives and full PCS recognition of new customers, for 1% of your CSP revenue.${who}`;
+        return `{g}You are now a CSP Indirect Reseller with ${DISTRIBUTOR.company}!{/} Licence margin, incentives and full PCS recognition of new customers. Your distributor keeps a 5% margin share.${who}`;
       }
       spend(s, 60);
       s.csp = 'direct';
-      const who = s.mpl ? '' : ` You buy direct from Microsoft now, so ${DISTRIBUTOR.am} moves on: MAICPP programme emails keep you posted until you join the Managed Partner List.`;
-      return `{g}Upgraded to CSP Direct Bill.{/} Better margins and incentives, and no more 1% provider fee.${who}`;
+      const who = s.mpl ? '' : ` You buy direct from Microsoft now, so ${DISTRIBUTOR.am} moves on: MAICPP programme emails keep you posted from now on.`;
+      return `{g}Upgraded to CSP Direct Bill.{/} Better margins and incentives, and you keep the 5% distributor margin share.${who}`;
     },
   },
   {

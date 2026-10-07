@@ -246,7 +246,7 @@ const LOSE: SongDef = {
 
 export const SONGS: Record<string, SongDef> = { title: TITLE, hub: HUB, hub2: HUB2, hub3: HUB3, hub4: HUB4, win: WIN, lose: LOSE };
 
-/** In-game tunes, one per financial year in rotation: FY27 hub, FY28 hub2, ... FY31 hub again. */
+/** In-game tunes, one per financial year in rotation: FY27 hub, FY28 hub2, ... then FY31 starts the cycle again. */
 export const GAME_SONGS = ['hub', 'hub2', 'hub3', 'hub4'];
 
 export function gameSong(fy: number): string {

@@ -1,4 +1,4 @@
-import { AREA, AREAS, AreaId, areaName, AZURE_ZERO, CFG, CSP, OFFER, PROGRAMMES, PS_FEE, SPEC } from './data';
+import { AREA, AREAS, AreaId, areaName, AZURE_ZERO, CFG, OFFER, PROGRAMMES, PS_FEE, SPEC } from './data';
 import { credits, fyOf, money, qOf, turnLabel } from './format';
 import { rollEvents } from './events';
 import { advisor, assignFirstPdm, currentPdm, rotatePdm } from './advisor';
@@ -27,7 +27,7 @@ import {
   canStopBenefits,
   creditLimit,
   cspBilled,
-  cspFee,
+  cspMargin,
   hasDesignation,
   pcs,
   publishedOffers,
@@ -87,7 +87,6 @@ export function forecastCosts(s: GameState): number {
     overheadCost(s) +
     programmeCost(s) +
     unifiedCost(s) +
-    cspFee(s) +
     s.debt * CFG.interest +
     (s.flags.dividends ?? 0) +
     offerDevCost(s) +
@@ -356,10 +355,9 @@ export function endQuarter(s: GameState): QuarterReport {
   let csp = 0;
   let incentives = 0;
   const billed = cspBilled(s);
-  // Indirect Resellers pay their Indirect Provider 1% of billed cloud; Direct Bill keeps it.
-  const fee = s.csp === 'indirect' ? billed.total * CSP.indirectFee : 0;
   if (s.csp !== 'none') {
-    csp = billed.total * CSP.margin[s.csp];
+    // Licence margin, net of the Indirect Provider's 5% share for Indirect Resellers.
+    csp = cspMargin(s);
     incentives = 0.25 * totalCustomers(s) * (1 + 0.25 * nDes) * (s.csp === 'direct' ? 1.3 : 1) * (hasMod(s, 'incentiveBoost') ? 1.5 : 1);
   }
   const revenue = services + offerRev + csp + incentives;
@@ -376,7 +374,7 @@ export function endQuarter(s: GameState): QuarterReport {
     s.azureCredits = Math.round((s.azureCredits - azureUsed) * 10) / 10;
     azureCash = AZURE_ZERO.runCost - azureUsed;
   }
-  const other = unifiedCost(s) + fee + (s.flags.dividends ?? 0) + offerDevCost(s) + (s.flags.integration ? 20 : 0) + azureCash;
+  const other = unifiedCost(s) + (s.flags.dividends ?? 0) + offerDevCost(s) + (s.flags.integration ? 20 : 0) + azureCash;
   if (s.flags.integration) s.flags.integration = Math.max(0, s.flags.integration - 1);
   const costs = salaries + overhead + progCost + interest + other;
   const profit = revenue - costs;
@@ -492,10 +490,9 @@ export function endQuarter(s: GameState): QuarterReport {
     }
   }
 
-  // --- A second specialization puts you on Microsoft's Managed Partner List from the next FY
+  // --- A second specialization quietly earns a place on Microsoft's Managed Partner List next FY (a surprise)
   if (s.specs.length >= 2 && s.flags.secondSpec === undefined) {
     s.flags.secondSpec = s.turn;
-    if (!s.mpl) notices.push(`{y}Two specializations! Microsoft will add you to its Managed Partner List from FY${fyOf(s.turn) + 1}, with your own Partner Development Manager.{/}`);
   }
 
   // --- Anniversaries: designations
@@ -586,7 +583,7 @@ export function endQuarter(s: GameState): QuarterReport {
   // --- Year end
   s.yearEnd = qOf(s.turn) === 4 ? endYear(s) : null;
 
-  // There is no time limit: the journey continues past FY31 until you win or lose.
+  // The journey continues year after year until you win or lose.
   s.turn++;
   if (s.status !== 'playing') s.phase = 'ended';
   return report;

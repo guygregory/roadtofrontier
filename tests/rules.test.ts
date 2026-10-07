@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { newGame, migrateState } from '../src/game/state';
 import { AREAS, AREA, areaList, areaName, AZURE_ZERO, OFFERS, PDM_CHANGE_REASONS, PDMS, PS_FEE, SPEC, SPECS, FRONTIER } from '../src/game/data';
-import { pcs, canPurchaseDesignation, specRequirements, specQualified, specUnlocked, frontierQualified, frontierRequirements, apMax, azureAllowance, cspBilled, cspFee, unifiedPrice } from '../src/game/rules';
+import { pcs, canPurchaseDesignation, specRequirements, specQualified, specUnlocked, frontierQualified, frontierRequirements, apMax, azureAllowance, cspBilled, cspMargin, distributorShare, unifiedPrice } from '../src/game/rules';
 import { clearLegacySaves, decodeSave, encodeSave, legacySave, saveFileName } from '../src/game/save';
 import { shareIntentUrl, shareMessage } from '../src/game/share';
 import { beginQuarter, endQuarter, licenceRelief } from '../src/game/sim';
@@ -220,7 +220,7 @@ describe('actions', () => {
     expect(res).toMatch(/CSP/);
     expect(s.csp).toBe('indirect');
     expect(s.ap).toBe(ap - 1);
-    expect(s.cash).toBe(cash); // no sign-up fee: the provider takes 1% of CSP revenue instead
+    expect(s.cash).toBe(cash); // no sign-up fee: the distributor takes a 5% margin share instead
   });
   it('refuses actions when out of action points', () => {
     const s = fresh();
@@ -626,16 +626,18 @@ describe('CSP economics and Unified for Partners', () => {
   const t12 = (s: GameState, total: number, azure: number) => {
     s.history = [0, 1, 2, 3].map((turn) => ({ turn, cash: 0, revenue: 0, profit: 0, customers: 0, staff: 0, pcs: {} as never, cloud: total / 4, cloudAzure: azure / 4 }));
   };
-  it('charges Indirect Resellers 1% of billed CSP revenue, and Direct Bill nothing', () => {
+  it('shares 5% of billed CSP spend with the distributor for Indirect Resellers only', () => {
     const s = fresh();
     s.areas.modern.customers = 50;
     expect(cspBilled(s).total).toBe(0);
     s.csp = 'indirect';
     const billed = cspBilled(s).total;
     expect(billed).toBeGreaterThan(0);
-    expect(cspFee(s)).toBeCloseTo(billed * 0.01, 1);
+    expect(distributorShare(s)).toBeCloseTo(billed * 0.05, 1);
+    expect(cspMargin(s)).toBeCloseTo(billed * 0.1, 1);
     s.csp = 'direct';
-    expect(cspFee(s)).toBe(0);
+    expect(distributorShare(s)).toBe(0);
+    expect(cspMargin(s)).toBeCloseTo(cspBilled(s).total * 0.2, 5);
   });
   it('records billed CSP revenue in the quarter history', () => {
     const s = fresh();

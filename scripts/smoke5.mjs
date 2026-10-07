@@ -1,5 +1,5 @@
 // New features: advisors (MAICPP emails -> distributor AM -> PDM on the MPL), the CSP action after
-// enrolling, Customer Zero for Azure with Azure credits, Partner Success renewal, and play past FY31.
+// enrolling, Customer Zero for Azure with Azure credits, Partner Success renewal, and endless play.
 // Usage: node scripts/smoke5.mjs [url]   (needs a running `npm run preview`)
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';

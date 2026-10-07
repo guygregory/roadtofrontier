@@ -1,11 +1,14 @@
-import { AREA, AREAS, AreaId, CFG, DIFFICULTY, RIVAL_NAMES } from './data';
-import { money } from './format';
+import { AREA, AREAS, AreaId, AZURE_ZERO, CFG, DIFFICULTY, DISTRIBUTOR, PDM_NAME, RIVAL_NAMES } from './data';
+import { credits, money } from './format';
+import { advisorKind, byAdvisor } from './advisor';
 import {
   addCerts,
   addMod,
   adjCompliance,
   adjMorale,
   adjRep,
+  azureZeroSplit,
+  becomeAzureZero,
   businessArea,
   gainKeyAccount,
   keyInArea,
@@ -195,7 +198,12 @@ export const EVENTS: EventDef[] = [
           s2.q.workshops[a] = (s2.q.workshops[a] ?? 0) + 2;
           s2.q.workshopRevenue += 24;
           adjRep(s2, 2);
-          return `Downturn for 3 quarters. Your PDM steers incentive-funded workshops your way in ${AREA[a].short}.`;
+          const who = byAdvisor(s2, {
+            pdm: `${PDM_NAME}, your PDM, steers`,
+            distributor: `${DISTRIBUTOR.am} at ${DISTRIBUTOR.company} points`,
+            program: 'A MAICPP incentives email points',
+          });
+          return `Downturn for 3 quarters. ${who} incentive-funded workshops your way in ${AREA[a].short}.`;
         },
       },
       {
@@ -682,7 +690,7 @@ export const EVENTS: EventDef[] = [
         apply: (s2) => {
           adjCompliance(s2, 5);
           adjRep(s2, 1);
-          return 'Integrity intact. Your PDM quietly approves.';
+          return `Integrity intact. ${byAdvisor(s2, { pdm: `${PDM_NAME}, your PDM, quietly approves.`, distributor: `${DISTRIBUTOR.am} at your distributor would approve.`, program: 'Exactly what the programme guidelines ask for.' })}`;
         },
       },
     ],
@@ -897,9 +905,10 @@ export const EVENTS: EventDef[] = [
     icon: 'mail',
     title: 'YOUR PDM ASKS A FAVOUR',
     cooldown: 5,
-    weight: () => 0.9,
+    // Only managed partners (on the MPL) have a Partner Development Manager.
+    weight: (s) => (s.mpl ? 0.9 : 0),
     text: () =>
-      'Alex, your Partner Development Manager, wants you to pilot a new Microsoft partner programme. It will eat time, but could pay off.',
+      `${PDM_NAME}, your Partner Development Manager, wants you to pilot a new Microsoft partner programme. It will eat time, but could pay off.`,
     choices: () => [
       {
         label: 'Sign us up',
@@ -916,9 +925,56 @@ export const EVENTS: EventDef[] = [
         label: 'Not this time',
         apply: (s2) => {
           adjRep(s2, -1);
-          return 'Alex understands. Mostly.';
+          return `${PDM_NAME} understands. Mostly.`;
         },
       },
+    ],
+  },
+  {
+    id: 'disti_offer',
+    kind: 'dilemma',
+    icon: 'handshake',
+    title: 'RESELLER ACCELERATOR',
+    cooldown: 5,
+    weight: (s) => (advisorKind(s) === 'distributor' ? 0.9 : 0),
+    text: () =>
+      `${DISTRIBUTOR.am}, your account manager at ${DISTRIBUTOR.company}, offers you a place on their Reseller Accelerator: subsidised exam vouchers and a joint campaign to your CSP customers.`,
+    choices: () => [
+      {
+        label: 'Join the accelerator',
+        hint: '$10K. Certifications and leads this quarter',
+        apply: (s2) => {
+          spend(s2, 10);
+          s2.q.skillPts += 2;
+          const a = s2.focus.primary;
+          s2.q.leads[a] = (s2.q.leads[a] ?? 0) + 3;
+          adjRep(s2, 1);
+          return `Vouchers issued and the campaign is live: extra certification progress and +3 ${AREA[a].short} leads.`;
+        },
+      },
+      { label: 'Not this time', apply: () => `${DISTRIBUTOR.am} promises to ask again next quarter.` },
+    ],
+  },
+  {
+    id: 'maicpp_email',
+    kind: 'dilemma',
+    icon: 'mail',
+    title: 'EMAIL: PARTNER SKILLING SPRINT',
+    cooldown: 5,
+    weight: (s) => (advisorKind(s) === 'program' ? 0.9 : 0),
+    text: () =>
+      'An automated MAICPP email arrives: free, self-paced partner skilling sprints, with exam vouchers for the first teams to finish. It comes from a no-reply address, so the decision is yours.',
+    choices: () => [
+      {
+        label: 'Enrol the team',
+        hint: 'Free. -4% capacity, certification progress',
+        apply: (s2) => {
+          s2.q.capacityLoss += 0.04;
+          s2.q.skillPts += 2;
+          return 'The team works through the sprint between projects: extra certification progress this quarter.';
+        },
+      },
+      { label: 'Archive the email', apply: () => 'Archived, along with 37 other unread programme emails.' },
     ],
   },
   {
@@ -1033,7 +1089,7 @@ export const EVENTS: EventDef[] = [
     id: 'customer_zero',
     kind: 'dilemma',
     icon: 'rocket',
-    title: 'CUSTOMER ZERO?',
+    title: 'CUSTOMER ZERO FOR COPILOT?',
     once: true,
     weight: (s) => (s.flags.customerZero ? 0 : 1),
     text: () => "Your team wants to roll out Copilot and agents internally first, to become 'customer zero' for the Frontier journey.",
@@ -1052,6 +1108,33 @@ export const EVENTS: EventDef[] = [
       },
       { label: 'Later', apply: () => 'The idea goes on the backlog.' },
     ],
+  },
+  {
+    id: 'azure_zero_pitch',
+    kind: 'dilemma',
+    icon: 'cloud',
+    title: 'CUSTOMER ZERO FOR AZURE?',
+    once: true,
+    minTurn: 1,
+    weight: (s) => (s.flags.azureZero ? 0 : s.azureCredits > 0 ? 1.2 : 0.6),
+    text: (s) =>
+      `Your architects want to run ${s.company} itself on Azure: internal agents on Azure AI Foundry and a Fabric data estate. ` +
+      (s.azureCredits > 0
+        ? `Your benefits include {c}${credits(s.azureCredits)}{/} of Azure credits this year.`
+        : 'You have no Azure credits: Partner Success, designations and specializations all include them.'),
+    choices: (s) => {
+      const split = azureZeroSplit(s, true);
+      return [
+        {
+          label: 'Fund it with Azure credits',
+          hint: `${credits(split.credits)} credits${split.cash > 0 ? ` + ${credits(split.cash)} cash` : ''}. +${pctTxt(AZURE_ZERO.productivity)} productivity`,
+          disabled: s.azureCredits > 0 ? undefined : 'No Azure credits from benefits',
+          apply: (s2) => becomeAzureZero(s2, true),
+        },
+        { label: 'Pay in cash', hint: `${money(AZURE_ZERO.cost)}. +${pctTxt(AZURE_ZERO.productivity)} productivity, +1 DP-600`, apply: (s2) => becomeAzureZero(s2, false) },
+        { label: 'Later', apply: () => 'The migration plan goes back in the drawer (see ACTIONS).' },
+      ];
+    },
   },
   {
     id: 'bcdr',

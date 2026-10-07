@@ -25,6 +25,8 @@ export function potyChance(s: GameState, category: AreaId | 'frontier', premium:
   const fy = fyOf(s.turn);
   if (s.flags.igniteFY === fy) sc += 0.03;
   if (s.flags.buildFY === fy) sc += 0.02;
+  // A PDM on the Managed Partner List champions your nomination inside Microsoft.
+  if (s.mpl) sc += 0.02;
   if (premium) sc += 0.05;
   const p = (sc - 0.28) * DIFFICULTY[s.difficulty].poty;
   return Math.max(0.01, Math.min(0.18, p));

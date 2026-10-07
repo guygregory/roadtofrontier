@@ -117,16 +117,16 @@ export class SetupScene implements Scene {
   private welcomeStep(app: App): void {
     const g = app.g;
     const her = HERITAGES[this.heritage];
-    panel(g, 6, 30, 308, 212, 'A MESSAGE FROM YOUR PDM');
-    g.blit(SPR.pdm, 14, 48, { scale: 2 });
-    g.frame(13, 47, 50, 50, C.LSLATE);
-    text(g, 'Alex', 38, 100, C.YELLOW, { align: 'center' });
-    text(g, 'Your PDM', 38, 110, C.GREY, { align: 'center' });
+    panel(g, 6, 30, 308, 212, 'INBOX: 1 UNREAD EMAIL');
+    g.blit(SPR.inbox, 14, 48, { scale: 2 });
+    g.frame(13, 47, 50, 50, C.SLATE);
+    text(g, 'MAICPP', 38, 100, C.CYAN, { align: 'center' });
+    text(g, 'No-reply', 38, 110, C.GREY, { align: 'center' });
     const msg =
-      `Welcome to the Microsoft AI Cloud Partner Program, {y}${this.name}{/}! You join as a Network member on {c}1 July 2026{/}, the first day of FY27. ` +
-      `Your ${her.name.toLowerCase()} gives you a head start in {y}${AREA[her.area].short}{/}.\n\n` +
-      `Grow your Partner Capability Score to 70 to become a {g}Solutions Partner{/}, earn {g}specializations{/}, and reach {y}Frontier Partner{/} - or win {y}Partner of the Year{/} - before the end of FY31.\n\n` +
-      `Don't run out of cash, and play by the rules: lose your membership and it's game over. Good luck!`;
+      `{c}From:{/} MAICPP (no-reply)\n{c}Subject:{/} Welcome, {y}${this.name}{/}!\n\n` +
+      `You join as a Network member on {c}1 July 2026{/} (FY27), with a head start in {y}${AREA[her.area].short}{/}.\n\n` +
+      `Reach a Partner Capability Score of 70 to become a {g}Solutions Partner{/}, earn {g}specializations{/}, then reach {y}Frontier Partner{/} or win {y}Partner of the Year{/}. There is no deadline - but stay solvent and play by the rules, or lose your membership.\n\n` +
+      `{d}Automated message. Please do not reply.{/}`;
     paragraph(g, msg, 72, 48, 236, C.WHITE, 10);
     if (ui.button(196, 222, 112, 14, 'START FY27 ►', { style: 'box' })) {
       app.state = newGame({ company: this.name.trim(), heritage: her.id, difficulty: this.difficulty });

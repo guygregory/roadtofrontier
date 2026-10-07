@@ -18,6 +18,8 @@ const LINES = [
   '',
   '{c}STARRING',
   'Alex, your Partner Development Manager',
+  'Sam, your distributor account manager',
+  'The MAICPP inbox (no-reply)',
   'Contoso, Fabrikam, Northwind & friends',
   '',
   '{c}INSPIRED BY',

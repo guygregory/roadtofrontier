@@ -1,4 +1,4 @@
-import { AREA, AREAS, AreaId, FRONTIER, OFFER, PCS_QUALIFY, PCS_WEIGHTS, SPEC, SpecDef } from './data';
+import { AREA, AREAS, AreaId, AZURE_CREDITS, CreditCategory, creditCategory, FRONTIER, OFFER, PCS_QUALIFY, PCS_WEIGHTS, SPEC, SpecDef } from './data';
 import type { GameState } from './types';
 
 export const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
@@ -151,8 +151,46 @@ export function frontierAuditChance(s: GameState, prep: boolean): number {
   p += 0.03 * Math.min(4, s.fte - FRONTIER.fte);
   p += 0.04 * Math.min(3, s.dp600 - FRONTIER.dp600);
   p += (s.compliance - 60) / 300;
+  // Being your own customer zero proves the agentic transformation you sell.
+  if (s.flags.customerZero) p += 0.04;
+  if (s.flags.azureZero) p += 0.04;
   if (prep) p += 0.15;
   return Math.max(0.1, Math.min(0.95, p));
+}
+
+export interface CreditBreakdown {
+  ps: number;
+  designations: number;
+  specs: number;
+  total: number;
+}
+
+/**
+ * Yearly Azure bulk credits ($K) from the benefits you hold: Partner Success, each Solutions Partner
+ * designation, and each specialization (capped per category, and only with Solutions Partner benefits).
+ */
+export function azureAllowance(s: GameState): CreditBreakdown {
+  const ps = s.benefits === 'none' ? 0 : AZURE_CREDITS.ps[s.benefits];
+  const designations = s.designations.reduce((n, d) => n + AZURE_CREDITS.designation[d.area], 0);
+  let specs = 0;
+  if (s.designations.length > 0) {
+    const used: Partial<Record<CreditCategory, number>> = {};
+    for (const held of s.specs) {
+      const def = SPEC[held.id];
+      if (!def) continue;
+      const cat = creditCategory(def);
+      const n = used[cat] ?? 0;
+      if (n >= AZURE_CREDITS.spec[cat].cap) continue;
+      used[cat] = n + 1;
+      specs += AZURE_CREDITS.spec[cat].per;
+    }
+  }
+  return { ps, designations, specs, total: Math.round((ps + designations + specs) * 10) / 10 };
+}
+
+/** Can Partner Success stop renewing? Only once a Solutions Partner designation is held. */
+export function canStopBenefits(s: GameState): boolean {
+  return s.benefits !== 'none' && s.designations.length > 0;
 }
 
 /** Total certifications, used for productivity and project quality. */

@@ -3,9 +3,9 @@ import { C } from '../engine/palette';
 import { text, wrap } from '../engine/font';
 import { panel, ui } from '../engine/ui';
 import { icon } from '../engine/sprites';
-import { ACTIONS, ActionDef, ActionOption, performAction } from '../game/actions';
+import { ACTIONS, ActionDef, ActionOption, actionBlocked, actionTitle, performAction } from '../game/actions';
 import { AREA, AREAS, AreaId } from '../game/data';
-import { money } from '../game/format';
+import { credits, money } from '../game/format';
 import { hasDesignation, pcs } from '../game/rules';
 import { background, footer, header, keyHint, requireState, scrollTo } from './common';
 import { HubScene } from './hub';
@@ -30,9 +30,9 @@ export class ActionsScene implements Scene {
     let focusDef: ActionDef | null = this.action;
     if (this.mode === 'list') {
       ACTIONS.forEach((a, i) => {
-        const reason = a.available(s) ?? (s.ap < a.ap ? 'No action points left' : null);
+        const reason = actionBlocked(s, a);
         const y = 32 + i * 14;
-        if (ui.button(5, y, 160, 13, a.name, { disabled: !!reason, desc: a.id })) {
+        if (ui.button(5, y, 160, 13, actionTitle(s, a), { disabled: !!reason, desc: a.id })) {
           this.action = a;
           this.listFocus = i;
           this.mode = 'options';
@@ -43,7 +43,7 @@ export class ActionsScene implements Scene {
       if (ui.back()) app.go(new HubScene());
     } else if (this.mode === 'options' && this.action) {
       const opts = this.action.options(s);
-      text(g, this.action.name, 8, 32, C.YELLOW);
+      text(g, actionTitle(s, this.action), 8, 32, C.YELLOW);
       const VIS = 6;
       this.optFirst = scrollTo(ui.focus, this.optFirst, VIS);
       if (this.optFirst > 0) text(g, '▲', 158, 32, C.CYAN);
@@ -77,7 +77,7 @@ export class ActionsScene implements Scene {
         ui.reset(this.listFocus);
       }
     } else if (this.mode === 'area' && this.action) {
-      text(g, `${this.action.name}`, 8, 32, C.YELLOW);
+      text(g, actionTitle(s, this.action), 8, 32, C.YELLOW);
       AREAS.forEach((a, i) => {
         const y = 46 + i * 26;
         const p = pcs(s, a);
@@ -96,10 +96,11 @@ export class ActionsScene implements Scene {
     if (focusDef) {
       g.rect(176, 32, 36, 36, C.NAVY);
       g.blit(icon(focusDef.icon), 178, 34, { scale: 2 });
-      const nameLines = wrap(focusDef.name, 98).slice(0, 2);
+      const nameLines = wrap(actionTitle(s, focusDef), 98).slice(0, 2);
       nameLines.forEach((l, i) => text(g, l, 216, 34 + i * 10, C.YELLOW));
       text(g, `${focusDef.ap} action point`, 216, 36 + nameLines.length * 10, C.GREY);
-      const reason = focusDef.available(s);
+      // In the list, explain why an action is greyed out; once chosen, the options say it.
+      const reason = this.mode === 'list' ? actionBlocked(s, focusDef) : focusDef.available(s);
       let y = 74;
       wrap(focusDef.blurb, 138)
         .slice(0, 13)
@@ -109,13 +110,16 @@ export class ActionsScene implements Scene {
         });
       if (reason) {
         y += 4;
-        wrap(`Unavailable: ${reason}`, 138).forEach((l) => {
-          text(g, l, 176, y, C.ORANGE);
-          y += 10;
-        });
+        wrap(`Unavailable: ${reason}`, 138)
+          .slice(0, Math.max(1, Math.floor((232 - y) / 10)))
+          .forEach((l) => {
+            text(g, l, 176, y, C.ORANGE);
+            y += 10;
+          });
       }
-      if (focusDef.id === 'coop') text(g, `Co-op balance: ${money(s.coop)}`, 176, 222, C.CYAN);
-      if (focusDef.id === 'frontier_skills') text(g, `FTE ${s.fte}/5   DP-600 ${s.dp600}/3`, 176, 222, C.CYAN);
+      if (focusDef.id === 'coop') text(g, `Co-op balance: ${money(s.coop)}`, 176, 232, C.CYAN);
+      if (focusDef.id === 'frontier_skills') text(g, `FTE ${s.fte}/5   DP-600 ${s.dp600}/3`, 176, 232, C.CYAN);
+      if (focusDef.id === 'azure_zero' && !reason) text(g, `Azure credits: ${credits(s.azureCredits)}`, 176, 232, C.CYAN);
     }
     footer(app, keyHint(app));
   }
@@ -123,9 +127,11 @@ export class ActionsScene implements Scene {
   private perform(app: App, area?: AreaId): void {
     const s = requireState(app);
     if (!this.action || !this.option) return;
+    // Title it as it was chosen: joining CSP renames the action to "CSP Direct Bill".
+    const title = actionTitle(s, this.action).toUpperCase();
     const res = performAction(s, this.action.id, this.option.id, area);
     const bad = res.startsWith('{r}');
-    app.message(this.action.name.toUpperCase(), res, bad ? 'bad' : 'good', this.action.icon);
+    app.message(title, res, bad ? 'bad' : 'good', this.action.icon);
     this.mode = 'list';
     ui.reset(this.listFocus);
   }

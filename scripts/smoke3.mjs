@@ -1,4 +1,5 @@
-// Marathon smoke test: plays many quarters through the UI and checks for runtime errors.
+// Marathon smoke test: plays quarters through the UI, past the end of FY31 (there is no time limit),
+// and checks for runtime errors. Stops when the game ends or FY32 Q3 is reached.
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 
@@ -69,6 +70,11 @@ for (let guard = 0; guard < 400; guard++) {
   if (s.status && s.status !== 'playing') {
     await shot(`ending-${s.status}`);
     console.log('ENDED', JSON.stringify(s));
+    break;
+  }
+  if (s.turn >= 22) {
+    await shot('past-fy31');
+    console.log('PAST FY31, STILL PLAYING', JSON.stringify(s));
     break;
   }
   if (s.turn !== lastTurn) {

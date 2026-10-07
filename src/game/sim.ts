@@ -1,6 +1,7 @@
-import { AREA, AREAS, AreaId, CFG, OFFER, PROGRAMMES, SPEC } from './data';
-import { fyOf, money, qOf, turnLabel } from './format';
+import { AREA, AREAS, AreaId, AZURE_ZERO, CFG, OFFER, PDM_NAME, PROGRAMMES, PS_FEE, SPEC } from './data';
+import { credits, fyOf, money, qOf, turnLabel } from './format';
 import { rollEvents } from './events';
+import { advisor } from './advisor';
 import {
   adjMorale,
   adjRep,
@@ -9,17 +10,21 @@ import {
   certGain,
   clamp,
   gainKeyAccount,
+  grantAzureCredits,
   hasMod,
   lose,
   loseKeyAccount,
   news,
   removeTech,
   schedule,
+  spend,
   win,
 } from './ops';
 import { potyChance, categoryName } from './poty';
 import {
   allPcs,
+  azureAllowance,
+  canStopBenefits,
   creditLimit,
   hasDesignation,
   pcs,
@@ -44,15 +49,31 @@ export function programmeCost(s: GameState): number {
   return c;
 }
 
+/**
+ * Overhead relief from internal-use licences. Partner Success and Solutions Partner benefits overlap
+ * (you only need one set of licences), and Solutions Partner benefits outgrow Partner Success.
+ */
+export function licenceRelief(s: GameState): number {
+  const ps = s.benefits === 'core' ? 4 : s.benefits === 'expanded' ? 8 : 0;
+  const n = s.designations.length;
+  const sp = n > 0 ? 10 + 6 * (n - 1) : 0;
+  return Math.min(30, Math.max(ps, sp));
+}
+
 export function overheadCost(s: GameState): number {
-  const relief = Math.min(30, (s.benefits === 'core' ? 4 : s.benefits === 'expanded' ? 8 : 0) + 6 * s.designations.length);
-  const base = CFG.overheadBase + CFG.overheadPerStaff * (s.tech + s.sales) - relief + (s.flags.officeDelta ?? 0);
+  const base = CFG.overheadBase + CFG.overheadPerStaff * (s.tech + s.sales) - licenceRelief(s) + (s.flags.officeDelta ?? 0);
   return Math.max(10, base * (s.bet === 'ops' ? 0.85 : 1));
 }
 
 export function offerDevCost(s: GameState): number {
   const per = CFG.offerBuildCost * (s.bet === 'innovation' ? 0.75 : 1) * (s.benefits === 'expanded' || s.designations.length > 0 ? 0.85 : 1);
   return Math.round(per * s.offers.filter((o) => !o.published).length);
+}
+
+/** Cash needed this quarter for Customer Zero for Azure consumption, after Azure credits. */
+export function azureRunCash(s: GameState): number {
+  if (!s.flags.azureZero) return 0;
+  return Math.max(0, AZURE_ZERO.runCost - Math.max(0, s.azureCredits));
 }
 
 /** Estimated recurring quarterly costs, for dashboards and planning. */
@@ -66,7 +87,8 @@ export function forecastCosts(s: GameState): number {
     s.debt * CFG.interest +
     (s.flags.dividends ?? 0) +
     offerDevCost(s) +
-    (s.flags.integration ? 20 : 0)
+    (s.flags.integration ? 20 : 0) +
+    azureRunCash(s)
   );
 }
 
@@ -79,8 +101,33 @@ function focusShares(s: GameState): [AreaId, number][] {
     : [[s.focus.primary, 1]];
 }
 
+/**
+ * 1 July: the new membership year. Partner Success renews (or lapses, if you switched renewal off)
+ * and the year's Azure bulk credits are granted for every benefit you hold.
+ */
+export function startFiscalYear(s: GameState): string[] {
+  const notes: string[] = [];
+  const fy = fyOf(s.turn);
+  if (s.benefits !== 'none' && s.flags.psPaidFY !== fy) {
+    const name = s.benefits === 'core' ? 'Core' : 'Expanded';
+    if (s.benefitsRenew) {
+      spend(s, PS_FEE[s.benefits]);
+      s.flags.psPaidFY = fy;
+      notes.push(`Partner Success ${name} Benefits renewed for FY${fy} (${money(PS_FEE[s.benefits])}).`);
+    } else {
+      s.benefits = 'none';
+      s.benefitsRenew = true;
+      notes.push(`Partner Success ${name} Benefits ended${s.designations.length > 0 ? ': your Solutions Partner benefits have you covered' : ''}.`);
+    }
+  }
+  s.azureCredits = azureAllowance(s).total;
+  if (s.azureCredits > 0) notes.push(`${credits(s.azureCredits)} of Azure credits granted for FY${fy}.`);
+  for (const n of notes) news(s, n);
+  return notes;
+}
+
 /** Start a quarter: roll PCS windows, reset per-quarter state and queue events. */
-export function beginQuarter(s: GameState): void {
+export function beginQuarter(s: GameState): string[] {
   for (const a of AREAS) {
     const ar = s.areas[a];
     ar.adds.shift();
@@ -96,9 +143,11 @@ export function beginQuarter(s: GameState): void {
   s.hiresThisQuarter = 0;
   s.targets = s.targets.filter((t) => t.expires >= s.turn);
   s.modifiers = s.modifiers.filter((m) => m.until >= s.turn);
+  const notes = qOf(s.turn) === 1 ? startFiscalYear(s) : [];
   s.pending = rollEvents(s);
   s.phase = s.status === 'playing' ? (s.pending.length > 0 ? 'events' : 'hub') : 'ended';
   news(s, `${turnLabel(s.turn)} begins.`);
+  return notes;
 }
 
 /** Resolve the quarter. Mutates state and returns the report. */
@@ -137,7 +186,7 @@ export function endQuarter(s: GameState): QuarterReport {
   const mkt = CFG.mktLeads[s.programmes.marketing] * repF * growth * (down ? 0.65 : 1);
   for (const [a, share] of shares) addLeads(a, mkt * share);
   for (const a of AREAS) if (q.leads[a]) addLeads(a, (q.leads[a] ?? 0) * (down ? 0.75 : 1));
-  const refs = (CFG.cosellRefs[s.programmes.cosell] + 0.4 * nDes + 0.3 * publishedOffers(s)) * (s.bet === 'align' ? 1.5 : 1) * growth + q.referralLeads;
+  const refs = (CFG.cosellRefs[s.programmes.cosell] + 0.4 * nDes + 0.3 * publishedOffers(s) + (s.mpl ? 1 : 0)) * (s.bet === 'align' ? 1.5 : 1) * growth + q.referralLeads;
   const refAreas = nDes > 0 ? s.designations.map((d) => d.area) : [s.focus.primary];
   for (const a of refAreas) addLeads(a, refs / refAreas.length);
   const organic = (s.reputation / 40) * (1 + 0.1 * nDes) * (down ? 0.7 : 1);
@@ -155,6 +204,7 @@ export function endQuarter(s: GameState): QuarterReport {
     p += 0.04 * specsInArea(s, a);
     p += 0.05 * Math.min(2, publishedOffers(s, a));
     if (s.frontier) p += 0.1;
+    if (s.flags.azureZero && AREA[a].azure) p += AZURE_ZERO.azureEdge;
     if (s.bet === 'growth') p += 0.05;
     if (down) p -= 0.08;
     if (priceWar && !discounting) p -= 0.1;
@@ -267,6 +317,7 @@ export function endQuarter(s: GameState): QuarterReport {
     if (crunch && AREA[a].azure) n = Math.round(n * 0.6);
     if (n <= 0) continue;
     let p = 0.55 + 0.3 * skillRatio(s, a) + (s.unified ? 0.05 : 0) + (s.bet === 'ops' ? 0.05 : 0) + 0.03 * specsInArea(s, a);
+    if (s.flags.azureZero && AREA[a].azure) p += AZURE_ZERO.azureEdge;
     p -= Math.max(0, util - 1) * 0.6;
     if (s.morale < 40) p -= 0.08;
     p += q.projectBoost[a] ?? 0;
@@ -310,7 +361,15 @@ export function endQuarter(s: GameState): QuarterReport {
   const salaries = s.tech * CFG.techCost + s.sales * CFG.salesCost;
   const overhead = overheadCost(s);
   const interest = s.debt * CFG.interest;
-  const other = (s.unified ? CFG.unifiedCost : 0) + (s.flags.dividends ?? 0) + offerDevCost(s) + (s.flags.integration ? 20 : 0);
+  // Customer Zero for Azure: internal Azure consumption, paid from Azure credits first.
+  let azureUsed = 0;
+  let azureCash = 0;
+  if (s.flags.azureZero) {
+    azureUsed = Math.min(Math.max(0, s.azureCredits), AZURE_ZERO.runCost);
+    s.azureCredits = Math.round((s.azureCredits - azureUsed) * 10) / 10;
+    azureCash = AZURE_ZERO.runCost - azureUsed;
+  }
+  const other = (s.unified ? CFG.unifiedCost : 0) + (s.flags.dividends ?? 0) + offerDevCost(s) + (s.flags.integration ? 20 : 0) + azureCash;
   if (s.flags.integration) s.flags.integration = Math.max(0, s.flags.integration - 1);
   const costs = salaries + overhead + progCost + interest + other;
   const profit = revenue - costs;
@@ -358,6 +417,7 @@ export function endQuarter(s: GameState): QuarterReport {
   if (s.compliance < 75) s.compliance++;
 
   // --- PCS & designations
+  const creditsBefore = azureAllowance(s).total;
   for (const a of AREAS) {
     const p = pcs(s, a);
     const ar = s.areas[a];
@@ -414,6 +474,23 @@ export function endQuarter(s: GameState): QuarterReport {
   }
   s.audits = [];
 
+  // --- New benefits activate straight away: their Azure credits run to the end of the FY.
+  // Earned as Q4 closes, there is no time left to use them, so they arrive with the new year on 1 July.
+  const creditsGained = Math.round((azureAllowance(s).total - creditsBefore) * 10) / 10;
+  if (creditsGained > 0) {
+    if (qOf(s.turn) === 4) notices.push(`{c}Your new benefits add ${credits(creditsGained)} a year of Azure credits{/}, from 1 July.`);
+    else {
+      grantAzureCredits(s, creditsGained);
+      notices.push(`{c}+${credits(creditsGained)} of Azure credits{/} from your new benefits (they expire on 30 June).`);
+    }
+  }
+
+  // --- A second specialization puts you on Microsoft's Managed Partner List from the next FY
+  if (s.specs.length >= 2 && s.flags.secondSpec === undefined) {
+    s.flags.secondSpec = s.turn;
+    if (!s.mpl) notices.push(`{y}Two specializations! Microsoft will add you to its Managed Partner List from FY${fyOf(s.turn) + 1}, with your own Partner Development Manager.{/}`);
+  }
+
   // --- Anniversaries: designations
   for (const d of [...s.designations]) {
     if (d.renewAt > s.turn) continue;
@@ -463,6 +540,7 @@ export function endQuarter(s: GameState): QuarterReport {
     profit: Math.round(profit),
     cashEnd: Math.round(s.cash),
     coopUsed: Math.round(coopUsed),
+    azureUsed: Math.round(azureUsed * 10) / 10,
     utilisation: util,
     wins,
     lost,
@@ -501,11 +579,7 @@ export function endQuarter(s: GameState): QuarterReport {
   // --- Year end
   s.yearEnd = qOf(s.turn) === 4 ? endYear(s) : null;
 
-  // --- Out of time
-  if (s.status === 'playing' && s.turn >= CFG.maxTurns - 1) {
-    lose(s, 'timeout', `FY${fyOf(s.turn)} is over. ${s.company} is a solid partner, but the Frontier is still over the horizon.`);
-  }
-
+  // There is no time limit: the journey continues past FY31 until you win or lose.
   s.turn++;
   if (s.status !== 'playing') s.phase = 'ended';
   return report;
@@ -546,6 +620,13 @@ function endYear(s: GameState): YearEndReport {
     s.coop = 0;
   }
 
+  // Azure bulk credits expire with the membership year
+  if (s.azureCredits > 0) {
+    report.azureExpired = s.azureCredits;
+    notices.push(`${credits(s.azureCredits)} of unused Azure credits expired.`);
+    s.azureCredits = 0;
+  }
+
   // MAICPP membership renewal
   if (s.status === 'playing') {
     if (s.compliance < 20) {
@@ -553,10 +634,22 @@ function endYear(s: GameState): YearEndReport {
       notices.push('{r}MAICPP membership NOT renewed.{/}');
     } else {
       notices.push('MAICPP membership renewed: agreement accepted, profile verified.');
+      // Managed Partner List: from the FY after your second specialization, a PDM looks after you.
+      if (!s.mpl && s.flags.secondSpec !== undefined) {
+        const before = advisor(s);
+        s.mpl = true;
+        s.flags.mplSince = s.turn + 1;
+        const from = before.kind === 'distributor' ? `${before.name} at your distributor` : 'the MAICPP programme emails';
+        notices.push(`{g}You join Microsoft's Managed Partner List for FY${fy + 1}!{/} ${PDM_NAME}, your new Partner Development Manager, takes over from ${from}.`);
+        news(s, `${s.company} joins Microsoft's Managed Partner List.`);
+      }
       if (s.benefits !== 'none') {
-        const fee = s.benefits === 'core' ? 1 : 4;
-        s.cash -= fee;
-        notices.push(`Partner Success ${s.benefits === 'core' ? 'Core' : 'Expanded'} Benefits renewed (${money(fee)}).`);
+        const name = s.benefits === 'core' ? 'Core' : 'Expanded';
+        if (!s.benefitsRenew) notices.push(`Partner Success ${name} Benefits end on 30 June (not renewing).`);
+        else
+          notices.push(
+            `Partner Success ${name} Benefits renew on 1 July (${money(PS_FEE[s.benefits])}).${canStopBenefits(s) ? ' Your Solutions Partner benefits now exceed them: you can stop renewing in your FY plan.' : ''}`,
+          );
       }
     }
   }

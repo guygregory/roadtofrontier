@@ -1,4 +1,4 @@
-import { SAVE_VERSION } from './state';
+import { migrateState, SAVE_VERSION } from './state';
 import { turnLabel } from './format';
 import type { GameState } from './types';
 
@@ -25,7 +25,7 @@ export function saveGame(s: GameState, slot: Slot): boolean {
   const st = storage();
   if (!st) return false;
   try {
-    const meta: SaveMeta = { slot, company: s.company, label: turnLabel(Math.min(s.turn, 19)), savedAt: new Date().toISOString() };
+    const meta: SaveMeta = { slot, company: s.company, label: turnLabel(s.turn), savedAt: new Date().toISOString() };
     st.setItem(PREFIX + 'save_' + slot, JSON.stringify({ meta, state: s }));
     return true;
   } catch {
@@ -41,7 +41,7 @@ export function loadGame(slot: Slot): GameState | null {
     if (!raw) return null;
     const data = JSON.parse(raw) as { state: GameState };
     if (!data.state || data.state.v !== SAVE_VERSION) return null;
-    return data.state;
+    return migrateState(data.state);
   } catch {
     return null;
   }
@@ -108,8 +108,8 @@ const DEFAULT_SCORES: HiScore[] = [
   { initials: 'SAT', company: 'Contoso', score: 36000, result: 'POTY', date: '2014' },
   { initials: 'AMY', company: 'Fabrikam', score: 28000, result: 'FRONTIER', date: '2026' },
   { initials: 'JAY', company: 'Northwind', score: 21000, result: 'POTY', date: '2026' },
-  { initials: 'LIZ', company: 'Litware', score: 15000, result: 'TIME UP', date: '2026' },
-  { initials: 'KEV', company: 'Tailspin', score: 11000, result: 'TIME UP', date: '2026' },
+  { initials: 'LIZ', company: 'Litware', score: 15000, result: 'POTY', date: '2026' },
+  { initials: 'KEV', company: 'Tailspin', score: 11000, result: 'REMOVED', date: '2026' },
   { initials: 'ROB', company: 'Proseware', score: 7000, result: 'BANKRUPT', date: '2026' },
   { initials: 'PAT', company: 'Woodgrove', score: 4000, result: 'BANKRUPT', date: '2026' },
 ];

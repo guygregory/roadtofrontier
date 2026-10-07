@@ -59,6 +59,7 @@ export class YearEndScene implements Scene {
     y += 12;
     for (const n of this.r.notices) {
       for (const l of wrap(`• ${n}`, 296)) {
+        if (y > 218) break;
         text(g, l, 12, y, C.WHITE);
         y += 10;
       }

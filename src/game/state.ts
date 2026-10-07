@@ -1,4 +1,6 @@
 import { AREAS, AreaId, CUSTOMER_NAMES, DIFFICULTY, Difficulty, HERITAGES } from './data';
+import { fyOf } from './format';
+import { azureAllowance } from './rules';
 import { pick, rand, randInt } from './rng';
 import type { AreaState, GameState, QuarterBoosts } from './types';
 
@@ -69,7 +71,10 @@ export function newGame(opts: NewGameOpts): GameState {
     ap: 2,
     hiresThisQuarter: 0,
     benefits: 'none',
+    benefitsRenew: true,
     csp: 'none',
+    mpl: false,
+    azureCredits: 0,
     unified: false,
     coop: 0,
     designations: [],
@@ -139,4 +144,26 @@ export function freshCustomerName(s: GameState): string {
   const free = CUSTOMER_NAMES.filter((n) => !used.has(n));
   if (free.length === 0) return `${pick(s, CUSTOMER_NAMES)} ${randInt(s, 2, 9)}`;
   return pick(s, free);
+}
+
+/** Bring a save from an earlier build up to date (fields added since SAVE_VERSION 1 shipped). */
+export function migrateState(s: GameState): GameState {
+  const m = s as Partial<GameState> & GameState;
+  if (typeof m.benefitsRenew !== 'boolean') m.benefitsRenew = true;
+  if (typeof m.mpl !== 'boolean') m.mpl = false;
+  if (!m.flags) m.flags = {};
+  // Saves from before Azure credits existed get this membership year's allowance straight away.
+  if (typeof m.azureCredits !== 'number') m.azureCredits = azureAllowance(m).total;
+  // Older builds charged Partner Success at year end, so the current FY is already paid for.
+  if (m.benefits !== 'none' && m.flags.psPaidFY === undefined) m.flags.psPaidFY = fyOf(m.turn);
+  // Already holding two specializations: the Managed Partner List starts the FY after the second was earned.
+  if (m.flags.secondSpec === undefined && m.specs.length >= 2) {
+    const earned = m.specs.map((x) => x.since).sort((a, b) => a - b)[1];
+    m.flags.secondSpec = earned;
+    if (!m.mpl && fyOf(earned) < fyOf(m.turn)) {
+      m.mpl = true;
+      m.flags.mplSince = 4 * (Math.floor(earned / 4) + 1);
+    }
+  }
+  return m;
 }

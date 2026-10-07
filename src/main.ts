@@ -14,6 +14,10 @@ import { HelpScene } from './scenes/help';
 import { CreditsScene } from './scenes/credits';
 import { TitleScene } from './scenes/title';
 import { HubScene } from './scenes/hub';
+import { PlanScene } from './scenes/plan';
+import { ActionsScene } from './scenes/actions';
+import { CompanyScene } from './scenes/company';
+import { EventScene } from './scenes/event';
 
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const stage = document.getElementById('stage') as HTMLDivElement;
@@ -55,7 +59,7 @@ app.go(new BootScene(), true);
 // Expose a tiny debug hook for automated smoke tests.
 (window as unknown as { __rtf: App; __rtfScenes: unknown }).__rtf = app;
 (window as unknown as { __rtfUi: unknown }).__rtfUi = ui;
-(window as unknown as { __rtfScenes: unknown }).__rtfScenes = { EndingScene, YearEndScene, HiscoreScene, HelpScene, CreditsScene, TitleScene, HubScene };
+(window as unknown as { __rtfScenes: unknown }).__rtfScenes = { EndingScene, YearEndScene, HiscoreScene, HelpScene, CreditsScene, TitleScene, HubScene, PlanScene, ActionsScene, CompanyScene, EventScene };
 
 let last = performance.now();
 function loop(now: number): void {

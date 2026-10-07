@@ -19,7 +19,7 @@ export function header(app: App, title: string): void {
   text(g, title, 15, 3, C.WHITE, { bold: true, shadow: C.BLACK });
   const s = app.state;
   if (s) {
-    const right = `${turnLabel(Math.min(s.turn, 19))} ${monthsLabel(Math.min(s.turn, 19))}`;
+    const right = `${turnLabel(s.turn)} ${monthsLabel(s.turn)}`;
     const cash = money(s.cash);
     const cw = measure(cash);
     text(g, cash, 317, 3, s.cash < 0 ? C.RED : C.YELLOW, { align: 'right', shadow: C.BLACK });

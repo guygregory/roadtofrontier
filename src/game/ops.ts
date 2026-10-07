@@ -1,5 +1,5 @@
-import { AREA, AREAS, AreaId, CFG, SPEC } from './data';
-import { money } from './format';
+import { AREA, AREAS, AreaId, AZURE_ZERO, CFG, SPEC } from './data';
+import { credits, money } from './format';
 import { allPcs, hasDesignation } from './rules';
 import { binomial, rand, randInt } from './rng';
 import { freshCustomerName } from './state';
@@ -191,6 +191,7 @@ export function lose(s: GameState, kind: GameState['endKind'], reason: string): 
   s.endKind = kind;
   s.endReason = reason;
   s.phase = 'ended';
+  s.flags.endTurn = s.turn;
 }
 
 export function win(s: GameState, kind: GameState['endKind'], reason: string): void {
@@ -199,6 +200,35 @@ export function win(s: GameState, kind: GameState['endKind'], reason: string): v
   s.endKind = kind;
   s.endReason = reason;
   s.phase = 'ended';
+  s.flags.endTurn = s.turn;
+}
+
+/** Add Azure bulk credits ($K) from a newly activated benefit. Credits expire at the end of the FY. */
+export function grantAzureCredits(s: GameState, amount: number): number {
+  if (amount <= 0) return 0;
+  s.azureCredits = Math.round((s.azureCredits + amount) * 10) / 10;
+  return amount;
+}
+
+/** How Customer Zero for Azure would be paid: Azure credits first (if chosen), cash for the rest. */
+export function azureZeroSplit(s: GameState, useCredits: boolean): { credits: number; cash: number } {
+  const c = useCredits ? Math.min(Math.max(0, s.azureCredits), AZURE_ZERO.cost) : 0;
+  return { credits: Math.round(c * 10) / 10, cash: Math.round((AZURE_ZERO.cost - c) * 10) / 10 };
+}
+
+/** Customer Zero for Azure: run the company on Azure (internal agents on Azure AI Foundry, a Fabric data estate). */
+export function becomeAzureZero(s: GameState, useCredits: boolean): string {
+  const split = azureZeroSplit(s, useCredits);
+  s.azureCredits = Math.round((s.azureCredits - split.credits) * 10) / 10;
+  spend(s, split.cash);
+  s.flags.azureZero = 1;
+  s.productivity += AZURE_ZERO.productivity;
+  s.dp600 = Math.min(s.tech, s.dp600 + 1);
+  certGain(s, 'dai', 2);
+  certGain(s, 'dataai', 2);
+  adjMorale(s, 2);
+  const paid = split.credits > 0 ? `${credits(split.credits)} of Azure credits${split.cash > 0 ? ` + ${credits(split.cash)} cash` : ''}` : `${money(split.cash)} cash`;
+  return `{g}You now run your own business on Azure!{/} Paid with ${paid}. Productivity +${Math.round(AZURE_ZERO.productivity * 100)}%, +1 DP-600, better Azure deals. Runs at ${money(AZURE_ZERO.runCost)}/qtr (credits first).`;
 }
 
 /** A competitor that could be acquired. */

@@ -5,7 +5,7 @@ import { C, gradient12 } from '../engine/palette';
 import { text, wrap } from '../engine/font';
 import { bar, panel, ui } from '../engine/ui';
 import { AREA, AREAS } from '../game/data';
-import { money, signedMoney, turnLabel } from '../game/format';
+import { credits, money, signedMoney, turnLabel } from '../game/format';
 import type { QuarterReport } from '../game/types';
 import { background, footer, header, requireState, signCol } from './common';
 import { reportDone } from './flow';
@@ -84,6 +84,12 @@ export function drawReportPage(g: Gfx, r: QuarterReport, page: number): void {
     if (r.coopUsed > 0) {
       text(g, 'Marketing paid by co-op funds', L + 6, 150, C.LGREY);
       text(g, money(r.coopUsed), R2 - 6, 150, C.CYAN, { align: 'right' });
+    }
+    const azureUsed = r.azureUsed ?? 0;
+    if (azureUsed > 0) {
+      const ay = r.coopUsed > 0 ? 159 : 150;
+      text(g, 'Azure usage paid by Azure credits', L + 6, ay, C.LGREY);
+      text(g, credits(azureUsed), R2 - 6, ay, C.CYAN, { align: 'right' });
     }
     text(g, 'Cash at quarter end', L + 6, 168, C.WHITE, { bold: true });
     text(g, money(r.cashEnd), R2 - 6, 168, r.cashEnd < 0 ? C.RED : C.YELLOW, { align: 'right', bold: true });

@@ -26,31 +26,47 @@ Web Audio. No game engine and no binary assets.
 ### The journey
 
 You start on **1 July 2026**, the first day of Microsoft's **FY27**. Each turn is one
-fiscal quarter (Q1 = Jul–Sep). The game runs until the end of **FY31** (20 quarters).
+fiscal quarter (Q1 = Jul–Sep). There is **no time limit**: play carries on past FY31,
+year after year, until you win or lose. Winning sooner earns a bigger score.
 
 1. **FY planning (every July)**: choose a primary (and optional secondary) focus area,
    a strategic bet for the year, programme budgets (skilling, marketing, sales & co-sell,
-   people) and Partner Success Core/Expanded benefits.
+   people) and Partner Success Core/Expanded benefits. Partner Success renews when you
+   confirm the plan; once you hold a Solutions Partner designation you can switch the
+   renewal off, because Solutions Partner benefits exceed it.
 2. **Each quarter**:
    - Handle incoming **events** (incidents, opportunities, tricky decisions and their
      delayed consequences).
    - Spend **action points** on: certification bootcamps, Frontier skilling, repeatable
      offers, joining CSP, partner incentives, co-op marketing events, Microsoft Ignite
      (Q2), Microsoft Build (Q4), Partner of the Year nominations (Q3), acquisitions,
-     Unified for Partners, co-selling and Partner Center referrals, compliance checks
-     and deploying Copilot internally.
+     Unified for Partners, co-selling and Partner Center referrals, compliance checks,
+     and becoming **customer zero** for Copilot and for Azure (pay in cash, or with the
+     Azure credits from your benefits).
    - Make up to two budget tweaks, hire or let staff go, and manage debt.
    - **End the quarter** to see the P&L, customers, deployments, certifications and
      PCS changes.
-3. **Year end**: Partner of the Year results, Marketing Co-op funds expire, and
-   membership renews.
+3. **Year end**: Partner of the Year results, unused Marketing Co-op funds and Azure
+   credits expire, and membership renews.
+
+### Who advises you
+
+| Stage | Advice comes from |
+| --- | --- |
+| Before you join CSP | Automated **MAICPP programme emails** (no-reply) |
+| CSP Indirect Reseller | **Sam**, your account manager at your distributor (Indirect Provider) |
+| Managed Partner List | **Alex**, your Microsoft Partner Development Manager (PDM) |
+
+Microsoft adds you to the **Managed Partner List** at the start of the FY after you earn
+your **second specialization**. CSP Direct Bill partners buy direct from Microsoft, so they
+hear from the programme by email until then. Your PDM brings extra co-sell referrals and
+champions your Partner of the Year nominations.
 
 ### Winning and losing
 
 - **Win**: pass the **Frontier Partner** audit, or win **Partner of the Year**.
-- **Lose**: two consecutive quarters with negative cash (bankrupt), having your **MAICPP
-  membership removed** (compliance failures, ignoring verification), or reaching the end
-  of FY31 without a win.
+- **Lose**: two consecutive quarters with negative cash (bankrupt), or having your
+  **MAICPP membership removed** (compliance failures, ignoring verification).
 
 ### How the programme is modelled
 
@@ -61,6 +77,8 @@ fiscal quarter (Q1 = Jul–Sep). The game runs until the end of **FY31** (20 qua
 | Specializations | Unlock only under the designations they align to. They need more certs, deployments and customers, then a third-party audit, a customer reference or automatic enrolment (Business Applications). |
 | Frontier Partner specialization | Needs Microsoft 365 Copilot, Data Security, Identity & Access Management, and AI Apps OR AI Platform specializations, plus 5 Frontier Transformation Engineers, 3 DP-600 holders and a passed audit. |
 | CSP | Joining as an Indirect Reseller (through an Indirect Provider) adds licence margin, incentives and co-op funds, and makes every new customer count in PCS. Direct Bill needs a designation. |
+| Partner benefits & Azure credits | Yearly Azure bulk credits follow the MAICPP Benefits Guide (July 2026): Partner Success Core $2.4K / Expanded $5K; each Solutions Partner designation $4K (Business Applications, Modern Work) or $10K (Azure areas, Security); each specialization $14K (Azure, max 5), $6K (Business Applications or Modern Work, max 3) or $10K (Security, max 3), only with Solutions Partner benefits. Credits are granted on 1 July (or when a benefit is earned) and expire on 30 June. |
+| Partner Success vs Solutions Partner | Their internal-use licences overlap rather than stack, so once you hold a designation Partner Success only adds its Azure credits, and you can stop renewing it. |
 
 Specialization alignments follow the prerequisite table on Microsoft Learn. **Thresholds,
 prices and payouts are simplified and scaled for gameplay. They are not real programme
@@ -88,8 +106,9 @@ Optional headless smoke tests (need Microsoft Edge or Chrome installed, plus a r
 ```bash
 node scripts/smoke.mjs    # new game -> plan -> events -> hub -> screens -> quarter report
 node scripts/smoke2.mjs   # year end, endings, hall of fame, help, credits
-node scripts/smoke3.mjs   # plays all 20 quarters through the UI, checking for runtime errors
+node scripts/smoke3.mjs   # plays quarter after quarter through the UI, past FY31, checking for runtime errors
 node scripts/smoke4.mjs   # late-game screens (designations, specializations, charts)
+node scripts/smoke5.mjs   # advisors, CSP after enrolling, Azure credits & customer zero, Partner Success renewal, FY32
 ```
 
 Screenshots are written to `screenshots/`.
@@ -100,11 +119,13 @@ Screenshots are written to `screenshots/`.
 src/
   engine/   gfx (framebuffer), palette, font, sprites (pixel art), input, ui (immediate-mode widgets),
             audio (chiptune synth + songs), fx (copper sky, raster road, scroller, particles)
-  game/     data (areas, specializations, offers, constants), rules (PCS, requirements), sim (quarter
-            resolution), events, actions, poty, ops, state, save, score, bot (balance-testing AI)
+  game/     data (areas, specializations, offers, benefits, constants), rules (PCS, requirements, Azure
+            credits), sim (quarter resolution), events, actions, advisor (who advises you), poty, ops,
+            state, save, score, bot (balance-testing AI)
   scenes/   boot, title, setup, plan, event, hub, actions, programmes, partnercenter, company,
             customers, reports, report, yearend, ending, hiscore, help, credits, load, gamemenu
-tests/      rules.test.ts (rules, simulation, actions, events), balance.test.ts (bot simulations)
+tests/      rules.test.ts (rules, simulation, actions, events, benefits, advisors), balance.test.ts (bot
+            simulations), text.test.ts (on-screen text fits its panels)
 ```
 
 Game logic is pure, deterministic TypeScript driven by a seeded RNG stored in the save, so it is

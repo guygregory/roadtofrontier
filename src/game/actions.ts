@@ -1,18 +1,23 @@
-import { AREA, AREAS, AreaId, CFG, FRONTIER, OFFER, OFFERS, SPEC } from './data';
-import { fyOf, money, pct, qOf } from './format';
+import { AREA, AREAS, AreaId, AZURE_ZERO, CFG, DISTRIBUTOR, FRONTIER, OFFER, OFFERS, PS_FEE, SPEC } from './data';
+import { credits, fyOf, money, pct, qOf } from './format';
 import {
   acquire,
   adjCompliance,
   adjMorale,
   adjRep,
+  azureZeroSplit,
+  becomeAzureZero,
   certGain,
   addCerts,
+  grantAzureCredits,
   news,
   spend,
 } from './ops';
 import {
   auditChance,
+  azureAllowance,
   canPurchaseDesignation,
+  canStopBenefits,
   creditLimit,
   frontierAuditChance,
   frontierOffers,
@@ -39,6 +44,8 @@ export interface ActionOption {
 export interface ActionDef {
   id: string;
   name: string;
+  /** Name for the current situation, if it changes (e.g. "Join CSP" becomes "CSP Direct Bill"). */
+  title?: (s: GameState) => string;
   icon: string;
   ap: number;
   blurb: string;
@@ -47,6 +54,23 @@ export interface ActionDef {
   available: (s: GameState) => string | null;
   options: (s: GameState) => ActionOption[];
   apply: (s: GameState, optionId: string, area?: AreaId) => string;
+}
+
+export function actionTitle(s: GameState, a: ActionDef): string {
+  return a.title?.(s) ?? a.name;
+}
+
+/**
+ * Why an action can't be taken right now, or null if it can. An action whose options are all
+ * disabled is blocked too, so the menu never offers something with nothing to choose.
+ */
+export function actionBlocked(s: GameState, a: ActionDef): string | null {
+  const reason = a.available(s);
+  if (reason) return reason;
+  const opts = a.options(s);
+  if (!opts.some((o) => !o.disabled)) return opts.find((o) => o.disabled)?.disabled ?? 'Nothing available right now';
+  if (s.ap < a.ap) return 'No action points left';
+  return null;
 }
 
 const inDev = (s: GameState) => s.offers.filter((o) => !o.published).length;
@@ -106,7 +130,12 @@ export const ACTIONS: ActionDef[] = [
     icon: 'offer',
     ap: 1,
     blurb: 'Package your IP into a repeatable offer and publish it on Microsoft Marketplace. Offers earn high-margin revenue, win deals, boost audits and Partner of the Year. Frontier offers are key to the Frontier audit.',
-    available: (s) => (inDev(s) >= 2 ? 'Two offers already in development' : null),
+    available: (s) =>
+      OFFERS.every((o) => s.offers.some((x) => x.id === o.id))
+        ? 'Every offer is built or in development'
+        : inDev(s) >= 2
+          ? 'Two offers already in development'
+          : null,
     options: (s) =>
       OFFERS.filter((o) => !s.offers.some((x) => x.id === o.id)).map((o) => {
         const q = Math.ceil(o.quarters / (s.bet === 'innovation' ? 1.5 : 1));
@@ -128,29 +157,45 @@ export const ACTIONS: ActionDef[] = [
   {
     id: 'csp',
     name: 'Join CSP',
+    title: (s) => (s.csp === 'none' ? 'Join CSP' : 'CSP Direct Bill'),
     icon: 'cart',
     ap: 1,
-    blurb: 'Resell Microsoft cloud through an Indirect Provider (distributor). Adds licence margin and CSP incentives, earns co-op funds, and every customer you win is recognised in your PCS. Direct bill needs a Solutions Partner designation.',
-    available: (s) => (s.csp === 'direct' ? 'Already a direct bill partner' : null),
-    options: (s) => [
-      { id: 'indirect', label: 'CSP Indirect Reseller', cost: 10, disabled: s.csp !== 'none' ? 'Already enrolled' : undefined, hint: 'Via an Indirect Provider' },
-      {
-        id: 'direct',
-        label: 'CSP Direct Bill',
-        cost: 60,
-        hint: 'Better margins & incentives',
-        disabled: s.csp !== 'indirect' ? 'Join as Indirect Reseller first' : s.designations.length === 0 ? 'Needs a Solutions Partner designation' : totalCustomers(s) < 60 ? 'Needs 60+ customers' : undefined,
-      },
-    ],
+    blurb: `Resell Microsoft cloud via an Indirect Provider (${DISTRIBUTOR.company}): licence margin, incentives, co-op funds, full PCS credit for new customers and an account manager. Direct Bill: designation + 60 customers.`,
+    available: (s) => {
+      if (s.csp === 'direct') return 'Already a CSP Direct Bill partner';
+      if (s.csp === 'indirect') {
+        if (s.designations.length === 0) return 'Already Indirect. Direct Bill needs a designation';
+        const c = totalCustomers(s);
+        if (c < 60) return `Already Indirect. Direct Bill needs 60+ customers (have ${c})`;
+      }
+      return null;
+    },
+    options: (s) =>
+      s.csp === 'none'
+        ? [
+            { id: 'indirect', label: 'CSP Indirect Reseller', cost: 10, hint: `Via ${DISTRIBUTOR.company}` },
+            { id: 'direct', label: 'CSP Direct Bill', cost: 60, disabled: 'Join as an Indirect Reseller first' },
+          ]
+        : [
+            {
+              id: 'direct',
+              label: 'CSP Direct Bill',
+              cost: 60,
+              hint: 'Better margins. You leave your distributor',
+              disabled: s.csp === 'direct' ? 'Already Direct Bill' : s.designations.length === 0 ? 'Needs a Solutions Partner designation' : totalCustomers(s) < 60 ? 'Needs 60+ customers' : undefined,
+            },
+          ],
     apply: (s, opt) => {
       if (opt === 'indirect') {
         spend(s, 10);
         s.csp = 'indirect';
-        return '{g}You are now a CSP Indirect Reseller!{/} Licence margin, incentives and full PCS recognition of new customers.';
+        const who = s.mpl ? '' : ` ${DISTRIBUTOR.am}, your account manager there, will advise you from now on.`;
+        return `{g}You are now a CSP Indirect Reseller with ${DISTRIBUTOR.company}!{/} Licence margin, incentives and full PCS recognition of new customers.${who}`;
       }
       spend(s, 60);
       s.csp = 'direct';
-      return '{g}Upgraded to CSP Direct Bill.{/} Margins and incentives up.';
+      const who = s.mpl ? '' : ` You buy direct from Microsoft now, so ${DISTRIBUTOR.am} moves on: MAICPP programme emails keep you posted until you join the Managed Partner List.`;
+      return `{g}Upgraded to CSP Direct Bill.{/} Margins and incentives up.${who}`;
     },
   },
   {
@@ -343,13 +388,15 @@ export const ACTIONS: ActionDef[] = [
     ap: 1,
     blurb: 'Register referrals in Partner Center and work joint opportunities with Microsoft account teams. More referral leads, a better shot at big deals, and a stronger Microsoft relationship.',
     available: (s) => (s.sales < 1 ? 'Needs at least one seller' : null),
-    options: (s) => [{ id: 'push', label: 'Register referrals', cost: 5, hint: `~${2 + s.designations.length} referral leads` }],
+    options: (s) => [{ id: 'push', label: 'Register referrals', cost: 5, hint: `~${2 + s.designations.length + (s.mpl ? 1 : 0)} referral leads${s.mpl ? ' (PDM boost)' : ''}` }],
     apply: (s) => {
       spend(s, 5);
-      s.q.referralLeads += 2 + s.designations.length;
+      s.q.referralLeads += 2 + s.designations.length + (s.mpl ? 1 : 0);
       s.q.keyBonus += 0.05 + 0.02 * s.designations.length;
       adjRep(s, 1);
-      return 'Referrals registered and pipeline reviewed with your account teams. +1 reputation.';
+      return s.mpl
+        ? 'Referrals registered, and your PDM walks your pipeline through with the account teams. +1 reputation.'
+        : 'Referrals registered and pipeline reviewed with your account teams. +1 reputation.';
     },
   },
   {
@@ -375,10 +422,10 @@ export const ACTIONS: ActionDef[] = [
   },
   {
     id: 'internal_ai',
-    name: 'Deploy Copilot Internally',
+    name: 'Customer Zero: Copilot',
     icon: 'monitor',
     ap: 1,
-    blurb: "Become 'customer zero': roll out Copilot and agents inside your own company. Permanent productivity boost and a Frontier Transformation Engineer badge.",
+    blurb: "Become 'customer zero' for Copilot: roll out Microsoft 365 Copilot and agents inside your own company. Permanent productivity boost, a Frontier Transformation Engineer badge and better Frontier audit odds.",
     available: (s) => (s.flags.customerZero ? 'Already done' : null),
     options: () => [{ id: 'go', label: 'Roll it out', cost: 30, hint: '+5% productivity forever' }],
     apply: (s) => {
@@ -387,8 +434,30 @@ export const ACTIONS: ActionDef[] = [
       s.productivity += 0.05;
       s.fte = Math.min(s.tech, s.fte + 1);
       adjMorale(s, 3);
-      return '{g}You are customer zero!{/} Productivity +5%, +1 Frontier Transformation Engineer.';
+      return '{g}You are customer zero for Copilot!{/} Productivity +5%, +1 Frontier Transformation Engineer.';
     },
+  },
+  {
+    id: 'azure_zero',
+    name: 'Customer Zero: Azure',
+    icon: 'cloud',
+    ap: 1,
+    blurb: `Run your company on Azure: agents on Azure AI Foundry and a Fabric data estate. Pay cash, or use the yearly Azure credits from Partner Success, designation and specialization benefits. Then ${money(AZURE_ZERO.runCost)}/qtr of Azure usage, credits first.`,
+    available: (s) => (s.flags.azureZero ? 'Already running on Azure' : null),
+    options: (s) => {
+      const split = azureZeroSplit(s, true);
+      return [
+        {
+          id: 'credits',
+          label: 'Use Azure credits',
+          cost: 0,
+          hint: `${credits(split.credits)} credits${split.cash > 0 ? ` + ${credits(split.cash)} cash` : ', no cash'}`,
+          disabled: s.azureCredits <= 0 ? 'No Azure credits from benefits yet' : undefined,
+        },
+        { id: 'cash', label: 'Pay in cash', cost: AZURE_ZERO.cost, hint: `+${pct(AZURE_ZERO.productivity)} productivity, +1 DP-600` },
+      ];
+    },
+    apply: (s, opt) => becomeAzureZero(s, opt === 'credits'),
   },
 ];
 
@@ -398,7 +467,7 @@ export function performAction(s: GameState, id: string, optionId: string, area?:
   const a = ACTION[id];
   if (!a) return '';
   if (s.ap < a.ap) return '{r}No action points left this quarter.{/}';
-  const reason = a.available(s);
+  const reason = actionBlocked(s, a);
   if (reason) return `{r}${reason}{/}`;
   const opt = a.options(s).find((o) => o.id === optionId);
   if (!opt || opt.disabled) return `{r}${opt?.disabled ?? 'Not available'}{/}`;
@@ -414,11 +483,13 @@ export function performAction(s: GameState, id: string, optionId: string, area?:
 
 export function purchaseDesignation(s: GameState, area: AreaId): string {
   if (!canPurchaseDesignation(s, area)) return '{r}Not qualified yet.{/}';
+  const before = azureAllowance(s).total;
   spend(s, CFG.designationFee);
   s.designations.push({ area, since: s.turn, renewAt: s.turn + 4 });
   adjRep(s, 3);
+  const added = grantAzureCredits(s, azureAllowance(s).total - before);
   news(s, `${s.company} earns Solutions Partner for ${AREA[area].name}!`);
-  return `{g}Congratulations! You are now a Solutions Partner for ${AREA[area].name}.{/} New specializations unlocked.`;
+  return `{g}Congratulations! You are now a Solutions Partner for ${AREA[area].name}.{/} New specializations unlocked${added > 0 ? `, and {c}${credits(added)} of Azure credits{/} added to your benefits` : ''}.`;
 }
 
 export function scheduleAudit(s: GameState, specId: string, prep: boolean): string {
@@ -517,11 +588,29 @@ export function cancelUnified(s: GameState): string {
 }
 
 export function buyBenefits(s: GameState, pkg: 'core' | 'expanded'): string {
-  const price = pkg === 'core' ? 1 : 4;
   if (s.benefits === pkg || (s.benefits === 'expanded' && pkg === 'core')) return '{r}Already have that package.{/}';
-  spend(s, price);
+  const before = azureAllowance(s).total;
+  spend(s, PS_FEE[pkg]);
   s.benefits = pkg;
-  return `Partner Success ${pkg === 'core' ? 'Core' : 'Expanded'} Benefits activated: internal-use licences and Azure credits cut your costs.`;
+  s.benefitsRenew = true;
+  s.flags.psPaidFY = fyOf(s.turn);
+  const added = grantAzureCredits(s, azureAllowance(s).total - before);
+  return `Partner Success ${pkg === 'core' ? 'Core' : 'Expanded'} on${added > 0 ? `: +${credits(added)} Azure credits` : ''}`;
+}
+
+/** Is the Partner Success renewal for the current FY still to be charged (FY plan not yet confirmed)? */
+export function benefitsRenewalDue(s: GameState): boolean {
+  return s.benefits !== 'none' && s.flags.psPaidFY !== fyOf(s.turn);
+}
+
+/** Switch Partner Success auto-renewal. Stopping is allowed once you hold a Solutions Partner designation. */
+export function setBenefitsRenewal(s: GameState, renew: boolean): string {
+  if (s.benefits === 'none') return '{r}No Partner Success package to renew.{/}';
+  if (!renew && !canStopBenefits(s)) return '{r}You can stop Partner Success once you hold a Solutions Partner designation.{/}';
+  s.benefitsRenew = renew;
+  const thisYear = s.phase === 'plan' && benefitsRenewalDue(s);
+  if (renew) return thisYear ? 'Partner Success renews when you confirm the plan' : 'Partner Success will renew on 1 July';
+  return thisYear ? 'Partner Success will not be renewed this year' : 'Partner Success will lapse on 30 June';
 }
 
 export function areaOptions(): AreaId[] {

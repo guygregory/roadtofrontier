@@ -5,20 +5,21 @@ import { panel, ui } from '../engine/ui';
 import { icon } from '../engine/sprites';
 import { background, footer } from './common';
 
-const PAGES: { title: string; icon: string; body: string }[] = [
+export const PAGES: { title: string; icon: string; body: string }[] = [
   {
     title: 'THE GOAL',
     icon: 'rocket',
     body:
       'You run a Microsoft partner. Starting on {c}1 July 2026{/} (FY27) as a {y}Network member{/}, grow through {g}Solutions Partner{/} designations and {g}specializations{/} to become a {y}Frontier Partner{/}.\n\n' +
       '{g}WIN:{/} pass the Frontier Partner audit, or win {y}Partner of the Year{/}.\n' +
-      '{r}LOSE:{/} run out of cash two quarters running, lose your MAICPP membership, or reach the end of FY31 without winning.',
+      '{r}LOSE:{/} run out of cash two quarters running, or lose your MAICPP membership.\n\n' +
+      'There is {c}no time limit{/}: play carries on past FY31 until you win or lose. Win sooner for a bigger score.',
   },
   {
     title: 'TURNS',
     icon: 'calendar',
     body:
-      'Each turn is a {c}quarter{/} of Microsoft\'s financial year (Q1 = Jul-Sep). At the start of every year you set your {y}strategy{/}: focus areas, a strategic bet and programme budgets.\n\n' +
+      'Each turn is a {c}quarter{/} of Microsoft\'s financial year (Q1 = Jul-Sep). At the start of every year you set your {y}strategy{/}: focus areas, a strategic bet, programme budgets and Partner Success benefits.\n\n' +
       'Each quarter: handle incoming {o}events and decisions{/}, spend {y}action points{/}, make up to 2 budget tweaks, hire staff, then END QUARTER to see the results.\n\n' +
       'Calendar: Ignite in Q2, Partner of the Year nominations in Q3, Build in Q4.',
   },
@@ -48,6 +49,14 @@ const PAGES: { title: string; icon: string; body: string }[] = [
       'Keep {y}compliance{/} high. Shortcuts may pay now but audits can remove your membership.',
   },
   {
+    title: 'ADVISORS & BENEFITS',
+    icon: 'mail',
+    body:
+      'At first only {c}MAICPP programme emails{/} advise you. Join {c}CSP{/} through a distributor and {y}Sam{/}, their account manager, takes over. Earn a {g}second specialization{/} and Microsoft adds you to its {y}Managed Partner List{/} next FY, with {y}Alex{/}, your own PDM.\n\n' +
+      'Partner Success, designations and specializations grant yearly {c}Azure credits{/} (they expire on 30 June). Use them to become {y}Customer Zero for Azure{/}, or pay cash.\n\n' +
+      'Once you hold a designation you can {o}stop renewing Partner Success{/}: Solutions Partner benefits exceed it.',
+  },
+  {
     title: 'GOOD HABITS',
     icon: 'bulb',
     body:
@@ -56,6 +65,7 @@ const PAGES: { title: string; icon: string; body: string }[] = [
       '• Spend {c}co-op funds{/} on events before they expire at year end.\n' +
       '• Claim {c}partner incentives{/} for funded workshops.\n' +
       '• Build {c}repeatable offers{/} and co-sell with Microsoft account teams.\n' +
+      '• Be {c}customer zero{/} for Copilot and Azure.\n' +
       '• {c}Unified for Partners{/} softens outages and failing projects.\n\n' +
       'Controls: mouse, or arrows/WASD + Enter, Esc to go back. M = music, F = fullscreen.',
   },

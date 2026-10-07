@@ -1,4 +1,4 @@
-import { ACTION, performAction, purchaseDesignation, scheduleAudit, scheduleFrontierAudit, hireStaff, borrow, buyBenefits } from './actions';
+import { ACTION, actionBlocked, performAction, purchaseDesignation, scheduleAudit, scheduleFrontierAudit, hireStaff, borrow, buyBenefits, setBenefitsRenewal } from './actions';
 import { AREA, AREAS, AreaId, OFFERS, SPEC, SPECS } from './data';
 import { EVENT, resolveEvent } from './events';
 import { qOf } from './format';
@@ -30,6 +30,9 @@ const PREF: Record<string, number> = {
   price_war: 1,
   bcdr: 0,
   pdm_pilot: 0,
+  disti_offer: 0,
+  maicpp_email: 0,
+  azure_zero_pitch: 0,
 };
 
 function needsFor(s: GameState): { primary: AreaId; secondary: AreaId | null } {
@@ -55,13 +58,15 @@ export function botPlan(s: GameState): void {
   const rich = s.cash > 500;
   s.programmes = { skilling: rich ? 3 : 2, marketing: 2, cosell: s.designations.length > 0 ? 2 : 1, people: s.morale < 55 ? 2 : 1 };
   s.bet = s.turn === 0 ? 'growth' : s.designations.length < 2 ? 'skills' : 'align';
-  if (s.benefits === 'none') buyBenefits(s, s.cash > 500 ? 'expanded' : 'core');
+  if (s.benefits === 'none' && s.designations.length === 0) buyBenefits(s, s.cash > 500 ? 'expanded' : 'core');
+  // Solutions Partner benefits supersede Partner Success once you hold a couple of designations.
+  if (s.designations.length >= 2 && s.benefits !== 'none' && s.benefitsRenew) setBenefitsRenewal(s, false);
 }
 
 function tryAction(s: GameState, id: string, opt: string, area?: AreaId): boolean {
   if (s.ap < 1) return false;
   const a = ACTION[id];
-  if (a.available(s)) return false;
+  if (actionBlocked(s, a)) return false;
   const o = a.options(s).find((x) => x.id === opt);
   if (!o || o.disabled) return false;
   performAction(s, id, opt, area);
@@ -131,6 +136,7 @@ export function botQuarter(s: GameState): void {
   if (s.cash > 200) tryAction(s, 'bootcamp', s.cash > 600 ? 'int' : 'std', gapArea);
   if (s.coop >= 8) tryAction(s, 'coop', s.coop >= 20 ? 'roadshow' : 'webinar', s.focus.primary);
   if (s.csp !== 'none' || s.designations.length > 0) tryAction(s, 'incentives', 'claim', s.focus.primary);
+  if (!s.flags.azureZero && s.azureCredits >= 8) tryAction(s, 'azure_zero', 'credits');
   if (!s.unified && s.cash > 700) tryAction(s, 'unified', 'sub');
   tryAction(s, 'cosell', 'push');
 
@@ -146,9 +152,9 @@ export function botQuarter(s: GameState): void {
   if (s.cash < 120) s.programmes.skilling = Math.min(s.programmes.skilling, 1);
 }
 
-/** Play an entire game with the bot. Returns the final state. */
-export function botGame(s: GameState): GameState {
-  for (let guard = 0; guard < 30 && s.status === 'playing'; guard++) {
+/** Play a game with the bot until it ends or `maxQuarters` have been played. Returns the final state. */
+export function botGame(s: GameState, maxQuarters = 40): GameState {
+  for (let guard = 0; guard < maxQuarters && s.status === 'playing'; guard++) {
     if (qOf(s.turn) === 1) botPlan(s);
     beginQuarter(s);
     botQuarter(s);

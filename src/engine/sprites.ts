@@ -494,6 +494,24 @@ const ART: Record<string, string[]> = {
     '................',
     '................',
   ],
+  cloud: [
+    '................',
+    '................',
+    '................',
+    '......kkkk......',
+    '.....kwwbbk.....',
+    '....kwbbbbbkkk..',
+    '..kkbbbbbbbbbbk.',
+    '.kbbbbbbbbbbbbek',
+    'kbwbbbbbbbbbbbek',
+    'kbbbbbbbbbbbbbek',
+    'kebbbbbbbbbbbeek',
+    '.keeeeeeeeeeeek.',
+    '..kkkkkkkkkkkk..',
+    '................',
+    '................',
+    '................',
+  ],
   gear: [
     '................',
     '......kkkk......',
@@ -559,6 +577,60 @@ const PDM = [
   '.kBBBBBBBBwwBBBBBBBBk...',
   '.kBBBBBBBBwwBBBBBBBBk...',
 ];
+
+// Sam, your distributor account manager (24x24): glasses, headset, Kickstart Distribution polo and lanyard.
+const DISTI = [
+  '........kkkkkkkk........',
+  '......kknnnnnnnnkk......',
+  '.....knnnnnnnnnnnnk.....',
+  '....knnnnnnnnnnnnnnk....',
+  '....knnnSSSSSSSSnnnk....',
+  '...knnSSSSSSSSSSSSnnk...',
+  '...knSSSSSSSSSSSSSSnk...',
+  '..ddkSkkkkkSSkkkkkSkdd..',
+  '..ddkSkcwckkkkcwckSkdd..',
+  '..ddkSkckckSSkckckSkdd..',
+  '...dkSkkkkkSSkkkkkSkd...',
+  '....kSSSSSShhSSSSSSk.d..',
+  '....kSSSSSSSSSSSSSSk.d..',
+  '....kSSSSSSSSSSSSSSkd...',
+  '.....kSSkSSSSSSkSSkd....',
+  '.....kSSSkkkkkkSSSk.....',
+  '......kkSSSSSSSSkk......',
+  '........kkSSSSkk........',
+  '.....kkkkoSSSSokkkk.....',
+  '...kkoooooYwwYoooookk...',
+  '..koooooooYwwYoooooook..',
+  '..kooooooooYYooooooook..',
+  '.koooooooooYYoooooooook.',
+  '.kooooooooowwoooooooook.',
+];
+
+/** MAICPP programme email (24x24): an envelope sealed with the four-square logo, with an unread badge. */
+function inboxRows(): string[] {
+  const badge = ['.RRR.', 'RwwRR', 'RRwRR', 'RRwRR', '.RRR.'];
+  const rows: string[] = [];
+  for (let r = 0; r < 24; r++) {
+    let row = '';
+    for (let c = 0; c < 24; c++) {
+      let ch = '.';
+      if (r >= 1 && r <= 5 && c >= 18 && c <= 22) ch = badge[r - 1][c - 18];
+      if (r >= 6 && r <= 20 && c >= 1 && c <= 21) {
+        const d = r - 6;
+        if (r === 6 || r === 20 || c === 1 || c === 21) ch = 'k';
+        else if ((c - 1 === d || 21 - c === d) && d <= 10) ch = 'k';
+        else if (r < 16 && c - 1 > d && 21 - c > d) ch = 'l';
+        else ch = 'w';
+      }
+      const sx = c - 9;
+      const sy = r - 13;
+      if (sx >= 0 && sx < 5 && sy >= 0 && sy < 5 && sx !== 2 && sy !== 2) ch = sy < 2 ? (sx < 2 ? 'r' : 'v') : sx < 2 ? 'b' : 'y';
+      row += ch;
+    }
+    rows.push(row);
+  }
+  return rows;
+}
 
 const FLOPPY = [
   '..kkkkkkkkkkkkkkkkkkkkkkkkkkkk..',
@@ -632,6 +704,12 @@ export const SPR = {
   get pdm(): Sprite {
     return cachedArt('pdm', PDM);
   },
+  get disti(): Sprite {
+    return cachedArt('disti', DISTI);
+  },
+  get inbox(): Sprite {
+    return cachedArt('inbox', inboxRows());
+  },
   get floppy(): Sprite {
     return cachedArt('floppy', FLOPPY);
   },
@@ -639,6 +717,11 @@ export const SPR = {
     return cachedArt('pointer', POINTER);
   },
 };
+
+/** Portrait for whoever is advising you (see game/advisor.ts). */
+export function advisorSprite(id: 'pdm' | 'disti' | 'inbox'): Sprite {
+  return SPR[id];
+}
 
 function cachedArt(key: string, rows: string[]): Sprite {
   let s = cache.get('@' + key);

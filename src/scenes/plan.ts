@@ -9,12 +9,13 @@ function wrapLimit(s: string, w: number, n: number): string {
   return lines.length <= n ? s : lines.slice(0, n).join(' ').replace(/\s*\S*$/, '...');
 }
 import { bar, panel, ui } from '../engine/ui';
-import { SPR } from '../engine/sprites';
-import { AREA, AREAS, AreaId, BETS, LEVEL_NAMES, PROGRAMMES } from '../game/data';
+import { advisorSprite } from '../engine/sprites';
+import { AREA, AREAS, AreaId, BETS, DISTRIBUTOR, LEVEL_NAMES, PDM_NAME, PROGRAMMES, PS_FEE } from '../game/data';
 import { fyOf, money } from '../game/format';
-import { hasDesignation, pcs } from '../game/rules';
+import { advisor } from '../game/advisor';
+import { canStopBenefits, hasDesignation, pcs } from '../game/rules';
 import { forecastCosts, lastRevenue } from '../game/sim';
-import { buyBenefits } from '../game/actions';
+import { benefitsRenewalDue, buyBenefits, setBenefitsRenewal } from '../game/actions';
 import { background, footer, header, keyHint, requireState } from './common';
 import { planCommitted } from './flow';
 
@@ -50,10 +51,20 @@ export class PlanScene implements Scene {
     const s = requireState(app);
     const g = app.g;
     const fy = fyOf(s.turn);
+    const who = advisor(s);
+    const email = who.kind === 'program';
     panel(g, 6, 30, 308, 212, `1 JULY ${2000 + fy - 1}: FY${fy} KICK-OFF`);
-    g.blit(SPR.pdm, 14, 48, { scale: 2 });
+    g.blit(advisorSprite(who.sprite), 14, 48, { scale: 2 });
     g.frame(13, 47, 50, 50, C.LSLATE);
+    text(g, who.shortName, 38, 100, email ? C.CYAN : C.YELLOW, { align: 'center' });
+    text(g, who.shortRole, 38, 110, C.GREY, { align: 'center' });
     const tips: string[] = [];
+    if (email) tips.push(`{c}From:{/} MAICPP (no-reply)\n{c}Subject:{/} FY${fy} starts today`);
+    if (who.kind === 'pdm' && s.flags.mplSince === s.turn) {
+      tips.push(
+        `Hi, I'm {y}${PDM_NAME}{/}, your new Partner Development Manager! With two specializations, ${s.company} is now on Microsoft's {g}Managed Partner List{/}. I'll connect you with account teams for co-selling and champion your Partner of the Year nominations.`,
+      );
+    }
     if (s.turn === 0) {
       tips.push('A new financial year! Set your priorities: which Solutions Partner designations to chase, what to invest in, and your big strategic bet.');
       tips.push('You can tweak budgets a little each quarter, but your focus areas and strategy are locked for the year.');
@@ -63,10 +74,20 @@ export class PlanScene implements Scene {
       const profit = last.reduce((a, h) => a + h.profit, 0);
       tips.push(`FY${fy - 1} wrap-up: revenue {y}${money(rev)}{/}, profit ${profit >= 0 ? '{g}' : '{r}'}${money(profit)}{/}.`);
       tips.push(`You hold ${s.designations.length} designation${s.designations.length === 1 ? '' : 's'} and ${s.specs.length} specialization${s.specs.length === 1 ? '' : 's'}.`);
-      if (fy === 31) tips.push('{o}FY31 is your final year. Make it count!{/}');
+      if (fy === 32) tips.push('{c}FY32 and beyond:{/} there is no deadline. Keep going until you reach the Frontier - or the money runs out.');
       tips.push('Remember: Frontier needs Copilot, Data Security, Identity & Access, and AI Apps or AI Platform specializations.');
     }
-    paragraph(g, tips.join('\n\n'), 72, 48, 236, C.WHITE, 10);
+    if (who.kind === 'distributor') tips.push(`Talk soon! - ${DISTRIBUTOR.am}, ${DISTRIBUTOR.company}`);
+    if (email) tips.push('{d}Automated message. Please do not reply.{/}');
+    // Up to 17 lines: drop whole paragraphs (the least important come last) rather than cut one off.
+    const lines: string[] = [];
+    for (const t of tips) {
+      const w = wrap(t, 236);
+      if (lines.length + (lines.length ? 1 : 0) + w.length > 17) continue;
+      if (lines.length) lines.push('');
+      lines.push(...w);
+    }
+    lines.forEach((l, i) => text(g, l, 72, 48 + i * 10, C.WHITE));
     if (ui.button(196, 222, 112, 14, 'PLAN THE YEAR ►', { style: 'box' })) {
       this.step = 1;
       ui.reset(AREAS.indexOf(s.focus.primary));
@@ -172,18 +193,34 @@ export class PlanScene implements Scene {
     });
     // Benefits package (Network member + Partner Success Benefits)
     const by = 124;
+    const fy = fyOf(s.turn);
     text(g, 'PARTNER SUCCESS BENEFITS', 14, by, C.CYAN);
+    let status = 'NOT PURCHASED';
+    if (s.benefits !== 'none') {
+      if (benefitsRenewalDue(s)) status = s.benefitsRenew ? `RENEWS ON CONFIRM -${money(PS_FEE[s.benefits])}` : 'ENDS: NOT RENEWING';
+      else status = s.benefitsRenew ? `ACTIVE FOR FY${fy}` : 'ENDS 30 JUNE';
+    }
+    text(g, status, 306, by, s.benefits !== 'none' && !s.benefitsRenew ? C.ORANGE : C.LSLATE, { align: 'right' });
     const pk: ['core' | 'expanded', string, string][] = [
-      ['core', 'CORE  $1K/yr', 'Internal-use licences: overhead -$4K/qtr'],
-      ['expanded', 'EXPANDED  $4K/yr', 'More licences + Azure credits: -$8K/qtr, cheaper offers'],
+      ['core', 'CORE $1K/YR', 'Internal-use licences (overhead -$4K/qtr) and $2.4K a year of Azure credits.'],
+      ['expanded', 'EXPANDED $4K', 'More licences (overhead -$8K/qtr), $5K a year of Azure credits and cheaper offers.'],
     ];
     pk.forEach(([id, label, desc], i) => {
       const owned = s.benefits === id || (s.benefits === 'expanded' && id === 'core');
-      if (ui.button(14 + i * 148, by + 10, 144, 14, owned ? `${label} ✓` : label, { style: 'box', selected: s.benefits === id, disabled: owned, desc })) {
+      if (ui.button(14 + i * 99, by + 10, 96, 14, owned ? `${label} ✓` : label, { style: 'box', selected: s.benefits === id, disabled: owned, desc })) {
         const r = buyBenefits(s, id);
         app.toast(r.replace(/\{.\}/g, '').slice(0, 48));
       }
     });
+    const canStop = canStopBenefits(s);
+    const renewDesc = canStop
+      ? 'Partner Success renews every July. Your Solutions Partner benefits now exceed it: switch renewal off to save the fee.'
+      : 'Partner Success renews every July. You can stop renewing once you hold a Solutions Partner designation.';
+    const renewOff = s.benefits === 'none' || (s.benefitsRenew && !canStop);
+    if (ui.button(212, by + 10, 94, 14, `RENEW: ${s.benefitsRenew ? 'ON' : 'OFF'}`, { style: 'box', disabled: renewOff, desc: renewDesc })) {
+      const r = setBenefitsRenewal(s, !s.benefitsRenew);
+      app.toast(r.replace(/\{.\}/g, '').slice(0, 48));
+    }
     // Summary
     const cost = forecastCosts(s);
     const rev = lastRevenue(s);
@@ -194,7 +231,7 @@ export class PlanScene implements Scene {
     const net = rev - cost;
     text(g, `Net before growth  ${money(net)}`, 20, 190, net >= 0 ? C.GREEN : C.RED);
     text(g, `Cash ${money(s.cash)}`, 300, 170, C.YELLOW, { align: 'right' });
-    if (ui.lastDesc && ui.focus < 6) paragraph(g, wrapLimit(ui.lastDesc, 176, 3), 14, 204, 176, C.LGREY, 9);
+    if (ui.lastDesc) paragraph(g, wrapLimit(ui.lastDesc, 176, 3), 14, 204, 176, C.LGREY, 9);
     if (ui.button(196, 224, 112, 14, 'CONFIRM PLAN ►', { style: 'box' })) {
       audio.sfx('levelup');
       planCommitted(app);

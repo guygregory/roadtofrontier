@@ -243,8 +243,54 @@ export const CFG = {
   offerBuildCost: 35,
   auditCost: 20,
   refCost: 3,
-  maxTurns: 20,
+  /** Wins before the end of FY31 (turn 20) earn a speed bonus; play itself has no time limit. */
+  speedTurns: 20,
 };
+
+// ---------------------------------------------------------------------------
+// Partner benefits: yearly Azure bulk credits ($K), per the MAICPP Benefits Guide (July 2026).
+// Credits are granted for the membership year (1 July) and expire if unused on 30 June.
+
+export type CreditCategory = 'azure' | 'bizapps' | 'modern' | 'security';
+
+export const AZURE_CREDITS = {
+  /** Partner Success Core / Expanded Benefits. */
+  ps: { core: 2.4, expanded: 5 } as Record<'core' | 'expanded', number>,
+  /** Solutions Partner designation-specific (incremental) benefits. */
+  designation: { dataai: 10, dai: 10, infra: 10, security: 10, bizapps: 4, modern: 4 } as Record<AreaId, number>,
+  /** Specialization benefits per specialization, capped per category. Only with Solutions Partner benefits. */
+  spec: {
+    azure: { per: 14, cap: 5 },
+    bizapps: { per: 6, cap: 3 },
+    modern: { per: 6, cap: 3 },
+    security: { per: 10, cap: 3 },
+  } as Record<CreditCategory, { per: number; cap: number }>,
+};
+
+/** Specialization benefit category (Azure, Business Applications, Modern Work, Security). */
+export function creditCategory(spec: SpecDef): CreditCategory {
+  return AREA[spec.skill].azure ? 'azure' : (spec.skill as CreditCategory);
+}
+
+/** Partner Success Benefits annual fee ($K). */
+export const PS_FEE: Record<'core' | 'expanded', number> = { core: 1, expanded: 4 };
+
+/** Customer Zero for Azure: run your own business on Azure. */
+export const AZURE_ZERO = {
+  cost: 20,
+  /** Quarterly Azure consumption once live, paid from Azure credits first. */
+  runCost: 2,
+  productivity: 0.03,
+  /** Better win rates and project success in Azure solution areas: you demo what you run. */
+  azureEdge: 0.02,
+};
+
+// ---------------------------------------------------------------------------
+// Who advises you: MAICPP programme emails, then your distributor's account manager
+// (once you join CSP through an Indirect Provider), then a Microsoft PDM (Managed Partner List).
+
+export const DISTRIBUTOR = { company: 'Kickstart Distribution', am: 'Sam' };
+export const PDM_NAME = 'Alex';
 
 // ---------------------------------------------------------------------------
 // Flavour: Microsoft's fictitious company names

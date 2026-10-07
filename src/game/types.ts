@@ -121,6 +121,8 @@ export interface QuarterReport {
   profit: number;
   cashEnd: number;
   coopUsed: number;
+  /** Azure consumption paid from Azure credits this quarter. */
+  azureUsed?: number;
   utilisation: number;
   wins: Partial<Record<AreaId, number>>;
   lost: number;
@@ -175,7 +177,13 @@ export interface GameState {
   ap: number;
   hiresThisQuarter: number;
   benefits: 'none' | 'core' | 'expanded';
+  /** Partner Success renews at the start of each FY unless switched off (allowed once you hold a designation). */
+  benefitsRenew: boolean;
   csp: 'none' | 'indirect' | 'direct';
+  /** On Microsoft's Managed Partner List, with a Partner Development Manager. */
+  mpl: boolean;
+  /** Azure bulk credits ($K) from benefits; expire at the end of the FY. */
+  azureCredits: number;
   unified: boolean;
   coop: number;
   designations: Designation[];
@@ -200,7 +208,7 @@ export interface GameState {
   negativeQuarters: number;
   status: 'playing' | 'won' | 'lost';
   endReason: string;
-  endKind: '' | 'frontier' | 'poty' | 'bankrupt' | 'removed' | 'timeout';
+  endKind: '' | 'frontier' | 'poty' | 'bankrupt' | 'removed';
   stats: { peakRevenue: number; deploys: number; customersWon: number; audits: number; potyFinalist: number };
 }
 
@@ -210,5 +218,6 @@ export interface YearEndReport {
   profit: number;
   poty: { category: string; result: 'winner' | 'finalist' | 'none'; chance: number }[];
   coopExpired: number;
+  azureExpired?: number;
   notices: string[];
 }

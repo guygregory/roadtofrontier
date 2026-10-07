@@ -1,9 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { newGame } from '../src/game/state';
-import { AREAS, AREA, SPEC, SPECS, FRONTIER } from '../src/game/data';
-import { pcs, canPurchaseDesignation, specRequirements, specQualified, specUnlocked, frontierQualified, frontierRequirements, apMax } from '../src/game/rules';
-import { beginQuarter, endQuarter } from '../src/game/sim';
-import { performAction, purchaseDesignation, scheduleAudit, hireStaff, fireStaff, borrow, repay } from '../src/game/actions';
+import { newGame, migrateState } from '../src/game/state';
+import { AREAS, AREA, AZURE_ZERO, OFFERS, PS_FEE, SPEC, SPECS, FRONTIER } from '../src/game/data';
+import { pcs, canPurchaseDesignation, specRequirements, specQualified, specUnlocked, frontierQualified, frontierRequirements, apMax, azureAllowance } from '../src/game/rules';
+import { beginQuarter, endQuarter, licenceRelief } from '../src/game/sim';
+import {
+  ACTION,
+  actionBlocked,
+  actionTitle,
+  performAction,
+  purchaseDesignation,
+  scheduleAudit,
+  hireStaff,
+  fireStaff,
+  borrow,
+  repay,
+  buyBenefits,
+  setBenefitsRenewal,
+} from '../src/game/actions';
+import { advisorKind } from '../src/game/advisor';
 import { EVENTS, EVENT, resolveEvent } from '../src/game/events';
 import { monthsLabel, turnLabel, money } from '../src/game/format';
 import { removeTech, certGain } from '../src/game/ops';
@@ -29,6 +43,8 @@ describe('dates and formatting', () => {
     expect(monthsLabel(2)).toBe('JAN-MAR 2027');
     expect(turnLabel(19)).toBe('FY31 Q4');
     expect(monthsLabel(19)).toBe('APR-JUN 2031');
+    expect(turnLabel(20)).toBe('FY32 Q1');
+    expect(monthsLabel(20)).toBe('JUL-SEP 2031');
   });
   it('formats money in $K and $M', () => {
     expect(money(600)).toBe('$600K');
@@ -152,6 +168,8 @@ describe('quarter simulation', () => {
     }
     expect(s.status).toBe('lost');
     expect(s.endKind).toBe('bankrupt');
+    expect(s.flags.endTurn).toBe(1);
+    expect(s.turn).toBe(2);
   });
   it('removes membership at year end when compliance collapses', () => {
     const s = fresh();
@@ -163,15 +181,18 @@ describe('quarter simulation', () => {
     expect(s.status).toBe('lost');
     expect(s.endKind).toBe('removed');
   });
-  it('ends with a time-out after FY31 Q4', () => {
+  it('keeps playing past FY31: there is no time limit', () => {
     const s = fresh();
     s.turn = 19;
-    beginQuarter(s);
-    s.pending = [];
-    s.cash = 5000;
-    endQuarter(s);
-    expect(s.status).toBe('lost');
-    expect(s.endKind).toBe('timeout');
+    for (let i = 0; i < 6; i++) {
+      beginQuarter(s);
+      s.pending = [];
+      s.cash = 5000;
+      endQuarter(s);
+    }
+    expect(s.status).toBe('playing');
+    expect(s.turn).toBe(25);
+    expect(turnLabel(s.turn)).toBe('FY33 Q2');
   });
   it('expires unused co-op funds at year end', () => {
     const s = fresh();
@@ -282,5 +303,266 @@ describe('events', () => {
     resolveEvent(s, pe, 1);
     expect(s.status).toBe('lost');
     expect(s.endKind).toBe('removed');
+  });
+});
+
+describe('CSP enrolment', () => {
+  it('is not offered again once you are an Indirect Reseller, until Direct Bill is possible', () => {
+    const s = fresh();
+    beginQuarter(s);
+    const csp = ACTION.csp;
+    expect(actionBlocked(s, csp)).toBeNull();
+    expect(actionTitle(s, csp)).toBe('Join CSP');
+    performAction(s, 'csp', 'indirect');
+    expect(s.csp).toBe('indirect');
+    s.ap = 3;
+    expect(actionBlocked(s, csp)).toMatch(/Already Indirect/);
+    expect(csp.options(s).map((o) => o.id)).toEqual(['direct']);
+    expect(performAction(s, 'csp', 'indirect')).toMatch(/\{r\}/);
+    maxArea(s, 'modern');
+    purchaseDesignation(s, 'modern');
+    expect(actionBlocked(s, csp)).toMatch(/60\+ customers/);
+    s.areas.modern.customers = 80;
+    expect(actionBlocked(s, csp)).toBeNull();
+    expect(actionTitle(s, csp)).toBe('CSP Direct Bill');
+    performAction(s, 'csp', 'direct');
+    expect(s.csp).toBe('direct');
+    expect(actionBlocked(s, csp)).toMatch(/Direct Bill partner/);
+  });
+  it('blocks any action whose options are all disabled', () => {
+    const s = fresh();
+    beginQuarter(s);
+    s.offers = OFFERS.map((o) => ({ id: o.id, progress: 9, required: 1, published: true, age: 1 }));
+    expect(actionBlocked(s, ACTION.offer)).toBeTruthy();
+    expect(performAction(s, 'offer', OFFERS[0].id)).toMatch(/\{r\}/);
+  });
+});
+
+describe('advisors and the Managed Partner List', () => {
+  it('MAICPP emails before CSP, the distributor account manager after, a PDM only on the MPL', () => {
+    const s = fresh();
+    expect(advisorKind(s)).toBe('program');
+    s.csp = 'indirect';
+    expect(advisorKind(s)).toBe('distributor');
+    s.mpl = true;
+    expect(advisorKind(s)).toBe('pdm');
+  });
+  it('direct bill partners without a PDM hear from the programme by email', () => {
+    const s = fresh();
+    s.csp = 'direct';
+    expect(advisorKind(s)).toBe('program');
+  });
+  it('joins the MPL at the start of the FY after the second specialization', () => {
+    const s = fresh();
+    s.csp = 'indirect';
+    s.turn = 1; // FY27 Q2
+    beginQuarter(s);
+    s.pending = [];
+    maxArea(s, 'security');
+    purchaseDesignation(s, 'security');
+    s.specs = [{ id: 'datasec', since: 0, renewAt: 4, renewals: 0 }];
+    s.audits.push({ kind: 'spec', spec: 'iam', chance: 1 });
+    endQuarter(s);
+    expect(s.specs).toHaveLength(2);
+    expect(s.flags.secondSpec).toBe(1);
+    expect(s.mpl).toBe(false);
+    expect(advisorKind(s)).toBe('distributor');
+    for (let i = 0; i < 2; i++) {
+      beginQuarter(s);
+      s.pending = [];
+      s.cash = 5000;
+      expect(s.mpl).toBe(false);
+      endQuarter(s);
+    }
+    expect(s.turn).toBe(4);
+    expect(s.mpl).toBe(true);
+    expect(s.flags.mplSince).toBe(4);
+    expect(advisorKind(s)).toBe('pdm');
+    expect(s.yearEnd?.notices.join(' ')).toMatch(/Managed Partner List/);
+  });
+  it('only managed partners meet their PDM; the distributor and programme have their own events', () => {
+    const s = fresh();
+    const w = (id: string) => EVENT[id].weight!(s);
+    expect(w('pdm_pilot')).toBe(0);
+    expect(w('maicpp_email')).toBeGreaterThan(0);
+    expect(w('disti_offer')).toBe(0);
+    s.csp = 'indirect';
+    expect(w('disti_offer')).toBeGreaterThan(0);
+    expect(w('maicpp_email')).toBe(0);
+    s.mpl = true;
+    expect(w('pdm_pilot')).toBeGreaterThan(0);
+    expect(w('disti_offer')).toBe(0);
+  });
+});
+
+describe('Azure credits and Customer Zero for Azure', () => {
+  const spec = (id: string) => ({ id, since: 0, renewAt: 4, renewals: 0 });
+  it('adds up yearly credits from Partner Success, designations and capped specializations', () => {
+    const s = fresh();
+    expect(azureAllowance(s).total).toBe(0);
+    s.benefits = 'expanded';
+    expect(azureAllowance(s).total).toBe(5);
+    s.designations = [
+      { area: 'security', since: 0, renewAt: 4 },
+      { area: 'modern', since: 0, renewAt: 4 },
+    ];
+    expect(azureAllowance(s).designations).toBe(14);
+    s.specs = ['datasec', 'iam', 'cloudsec', 'threat'].map(spec);
+    expect(azureAllowance(s).specs).toBe(30); // Security category capped at 3
+    s.specs.push(spec('aiplatform'), spec('copilot'));
+    expect(azureAllowance(s).specs).toBe(50);
+    expect(azureAllowance(s).total).toBe(69);
+  });
+  it('specialization credits need Solutions Partner benefits', () => {
+    const s = fresh();
+    s.specs = [spec('datasec')];
+    expect(azureAllowance(s).specs).toBe(0);
+  });
+  it('new benefits grant credits at once; unused credits expire on 30 June and the year is re-granted on 1 July', () => {
+    const s = fresh();
+    buyBenefits(s, 'core');
+    expect(s.azureCredits).toBe(2.4);
+    maxArea(s, 'infra');
+    purchaseDesignation(s, 'infra');
+    expect(s.azureCredits).toBe(12.4);
+    s.turn = 3;
+    beginQuarter(s);
+    s.pending = [];
+    s.cash = 5000;
+    endQuarter(s);
+    expect(s.azureCredits).toBe(0);
+    expect(s.yearEnd?.azureExpired).toBe(12.4);
+    beginQuarter(s); // FY28 Q1
+    expect(s.azureCredits).toBe(12.4);
+  });
+  it('earning a specialization adds its credits straight away', () => {
+    const s = fresh();
+    beginQuarter(s);
+    s.pending = [];
+    s.designations = [{ area: 'security', since: 0, renewAt: 4 }];
+    s.audits.push({ kind: 'spec', spec: 'datasec', chance: 1 });
+    const before = s.azureCredits;
+    endQuarter(s);
+    expect(s.azureCredits).toBe(before + 10);
+  });
+  it('benefits earned as Q4 closes bring their credits on 1 July instead of expiring at once', () => {
+    const s = fresh();
+    s.turn = 3;
+    beginQuarter(s);
+    s.pending = [];
+    s.cash = 5000;
+    s.designations = [{ area: 'security', since: 0, renewAt: 8 }];
+    s.audits.push({ kind: 'spec', spec: 'datasec', chance: 1 });
+    const r = endQuarter(s);
+    expect(r.notices.join(' ')).toMatch(/from 1 July/);
+    expect(s.yearEnd?.azureExpired ?? 0).toBe(0);
+    beginQuarter(s); // FY28 Q1
+    expect(s.azureCredits).toBe(20); // Security designation + Data Security specialization
+  });
+  it('Customer Zero for Azure uses credits first, topped up with cash, then runs on credits', () => {
+    const s = fresh();
+    beginQuarter(s);
+    s.pending = [];
+    s.azureCredits = 12;
+    const cash = s.cash;
+    const prod = s.productivity;
+    expect(performAction(s, 'azure_zero', 'credits')).toMatch(/Azure/);
+    expect(s.azureCredits).toBe(0);
+    expect(s.cash).toBeCloseTo(cash - (AZURE_ZERO.cost - 12));
+    expect(s.productivity).toBeCloseTo(prod + AZURE_ZERO.productivity);
+    expect(s.flags.azureZero).toBe(1);
+    expect(actionBlocked(s, ACTION.azure_zero)).toMatch(/Already/);
+    s.azureCredits = 3;
+    const r = endQuarter(s);
+    expect(r.azureUsed).toBe(AZURE_ZERO.runCost);
+    expect(s.azureCredits).toBe(3 - AZURE_ZERO.runCost);
+  });
+  it('can always be paid in cash; the credits option needs credits', () => {
+    const s = fresh();
+    beginQuarter(s);
+    expect(ACTION.azure_zero.options(s).find((o) => o.id === 'credits')?.disabled).toBeTruthy();
+    const cash = s.cash;
+    performAction(s, 'azure_zero', 'cash');
+    expect(s.cash).toBe(cash - AZURE_ZERO.cost);
+    expect(s.flags.azureZero).toBe(1);
+  });
+});
+
+describe('Partner Success benefits', () => {
+  it('can only stop renewing once you hold a Solutions Partner designation', () => {
+    const s = fresh();
+    buyBenefits(s, 'expanded');
+    expect(setBenefitsRenewal(s, false)).toMatch(/\{r\}/);
+    expect(s.benefitsRenew).toBe(true);
+    maxArea(s, 'modern');
+    purchaseDesignation(s, 'modern');
+    expect(setBenefitsRenewal(s, false)).not.toMatch(/\{r\}/);
+    expect(s.benefitsRenew).toBe(false);
+  });
+  it('renews and charges on 1 July, or lapses for free if switched off', () => {
+    const s = fresh();
+    buyBenefits(s, 'core');
+    s.turn = 4;
+    const cash = s.cash;
+    beginQuarter(s);
+    expect(s.benefits).toBe('core');
+    expect(s.cash).toBe(cash - PS_FEE.core);
+    expect(s.flags.psPaidFY).toBe(28);
+    maxArea(s, 'security');
+    purchaseDesignation(s, 'security');
+    setBenefitsRenewal(s, false);
+    s.turn = 8;
+    const cash2 = s.cash;
+    beginQuarter(s);
+    expect(s.benefits).toBe('none');
+    expect(s.cash).toBe(cash2);
+    expect(s.azureCredits).toBe(10);
+  });
+  it('is not charged twice when bought during the FY plan', () => {
+    const s = fresh();
+    buyBenefits(s, 'expanded');
+    const cash = s.cash;
+    beginQuarter(s);
+    expect(s.cash).toBe(cash);
+    expect(s.azureCredits).toBe(5);
+  });
+  it('Solutions Partner licences supersede Partner Success instead of stacking', () => {
+    const s = fresh();
+    s.benefits = 'expanded';
+    expect(licenceRelief(s)).toBe(8);
+    s.designations = [{ area: 'modern', since: 0, renewAt: 4 }];
+    expect(licenceRelief(s)).toBe(10);
+    s.benefits = 'none';
+    expect(licenceRelief(s)).toBe(10);
+  });
+});
+
+describe('saves', () => {
+  const oldSave = (turn: number, specSince: number[]): GameState => {
+    const s = fresh() as unknown as Record<string, unknown> & GameState;
+    delete (s as Partial<GameState>).mpl;
+    delete (s as Partial<GameState>).benefitsRenew;
+    delete (s as Partial<GameState>).azureCredits;
+    s.benefits = 'core';
+    s.turn = turn;
+    s.specs = specSince.map((since, i) => ({ id: ['datasec', 'iam', 'cloudsec'][i], since, renewAt: since + 4, renewals: 0 }));
+    return migrateState(s);
+  };
+  it('migrates games saved before the latest changes', () => {
+    const m = oldSave(6, [4, 5]);
+    expect(m.mpl).toBe(false);
+    expect(m.benefitsRenew).toBe(true);
+    expect(m.azureCredits).toBe(2.4); // this year's Partner Success Core credits
+    expect(m.flags.psPaidFY).toBe(28);
+    expect(m.flags.secondSpec).toBe(5); // second specialization this FY: MPL from FY29
+  });
+  it('puts old saves on the MPL from the FY after their second specialization', () => {
+    const m = oldSave(6, [1, 0, 5]); // second specialization earned in FY27
+    expect(m.flags.secondSpec).toBe(1);
+    expect(m.mpl).toBe(true);
+    expect(m.flags.mplSince).toBe(4);
+    const q4 = oldSave(4, [2, 3]); // earned in FY27 Q4, saved at the FY28 plan
+    expect(q4.mpl).toBe(true);
+    expect(q4.flags.mplSince).toBe(4);
   });
 });

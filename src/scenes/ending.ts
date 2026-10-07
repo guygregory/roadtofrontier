@@ -42,7 +42,7 @@ export class EndingScene implements Scene {
     const s = app.state!;
     const g = app.g;
     const lines = [
-      `Finished: ${turnLabel(Math.min(s.turn, 19))}`,
+      `Finished: ${turnLabel(s.flags.endTurn ?? Math.max(0, s.turn - 1))}`,
       `Designations: ${s.designations.map((d) => AREA[d.area].short).join(', ') || 'none'}`,
       `Specializations: ${s.specs.length}   Offers: ${s.offers.filter((o) => o.published).length}`,
       `Customers: ${totalCustomers(s)}   Staff: ${s.tech + s.sales}`,
@@ -105,7 +105,7 @@ export class EndingScene implements Scene {
         g.frame(10, 10, 300, 56, col);
       }
       text(g, 'Business Failure.  Press mouse button to continue.', 160, 22, col, { align: 'center' });
-      const code = s.endKind === 'bankrupt' ? '0000000B.ANKRUPT' : s.endKind === 'removed' ? '0000000D.EMBERED' : '0000FY31.TIMEOUT';
+      const code = s.endKind === 'bankrupt' ? '0000000B.ANKRUPT' : '0000000D.EMBERED';
       text(g, `Guru Meditation #${code}`, 160, 40, col, { align: 'center' });
       paragraph(g, s.endReason, 24, 90, 272, C.LGREY, 10);
       text(g, 'CLICK TO CONTINUE', 160, 236, Math.floor(e * 2) % 2 ? C.GREY : C.DGREY, { align: 'center' });
@@ -118,7 +118,7 @@ export class EndingScene implements Scene {
     }
     starfield(g, app.t, 256, 6);
     titleText(g, 'GAME OVER', 160, 20, 3, ['fff', 'ccc', 'f52', '700'], app.t, 1);
-    const title = s.endKind === 'bankrupt' ? 'OUT OF BUSINESS' : s.endKind === 'removed' ? 'MEMBERSHIP REMOVED' : 'TIME RAN OUT';
+    const title = s.endKind === 'bankrupt' ? 'OUT OF BUSINESS' : 'MEMBERSHIP REMOVED';
     text(g, title, 160, 56, C.ORANGE, { align: 'center', bold: true });
     panel(g, 20, 70, 280, 180);
     paragraph(g, s.endReason, 30, 78, 260, C.CREAM, 10);

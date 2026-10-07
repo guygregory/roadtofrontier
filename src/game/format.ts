@@ -14,6 +14,13 @@ export function signedMoney(k: number): string {
   return (k >= 0 ? '+' : '') + money(k);
 }
 
+/** Like money(), but keeps one decimal for small fractional amounts (Azure credits: $2.4K). */
+export function credits(k: number): string {
+  const r = Math.round(k * 10) / 10;
+  if (Math.abs(r) < 100 && r !== Math.round(r)) return `${r < 0 ? '-' : ''}$${Math.abs(r).toFixed(1)}K`;
+  return money(r);
+}
+
 export function fyOf(turn: number): number {
   return 27 + Math.floor(turn / 4);
 }

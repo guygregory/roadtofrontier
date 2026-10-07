@@ -2,10 +2,11 @@ import type { App, Scene } from '../app';
 import { C, gradient12 } from '../engine/palette';
 import { text, wrap } from '../engine/font';
 import { bar, divider, panel, ui } from '../engine/ui';
-import { SPR, designationBadge, drawHQ } from '../engine/sprites';
+import { advisorSprite, designationBadge, drawHQ } from '../engine/sprites';
 import { AREA, AREAS } from '../game/data';
-import { money } from '../game/format';
-import { hasDesignation, partnerStage, pcs, totalCustomers } from '../game/rules';
+import { credits, money } from '../game/format';
+import { advisor } from '../game/advisor';
+import { azureAllowance, hasDesignation, partnerStage, pcs, totalCustomers } from '../game/rules';
 import { forecastCosts, lastRevenue } from '../game/sim';
 import { header, meter, requireState, statusLine } from './common';
 import { advisorTips } from './advisor';
@@ -66,6 +67,10 @@ export class HubScene implements Scene {
       statusLine(g, 5, y, 'Co-op funds', money(s.coop), C.CYAN);
       y += 9;
     }
+    if (s.azureCredits > 0 || azureAllowance(s).total > 0 || s.flags.azureZero) {
+      statusLine(g, 5, y, 'Azure credits', credits(s.azureCredits), C.CYAN);
+      y += 9;
+    }
     y += 2;
     meter(g, 5, y, 'Morale', s.morale, s.morale < 40 ? C.RED : C.GREEN, 122);
     y += 9;
@@ -115,6 +120,7 @@ export class HubScene implements Scene {
     text(g, 'HQ', 136, 204, C.LSLATE);
     text(g, `${staffN}`, 184, 204, C.GREY, { align: 'right' });
 
+    const who = advisor(s);
     const tips = advisorTips(s);
     if (app.t - this.tipT > 7) {
       this.tipIdx++;
@@ -125,14 +131,15 @@ export class HubScene implements Scene {
       this.tipT = app.t;
     }
     const tip = tips[this.tipIdx % tips.length];
-    g.blit(SPR.pdm, 192, 136);
-    g.frame(191, 135, 26, 26, C.LSLATE);
-    text(g, 'ALEX, YOUR PDM', 222, 138, C.YELLOW);
-    text(g, `TIP ${(this.tipIdx % tips.length) + 1}/${tips.length}`, 222, 148, C.GREY);
+    g.blit(advisorSprite(who.sprite), 192, 136);
+    g.frame(191, 135, 26, 26, who.kind === 'program' ? C.SLATE : C.LSLATE);
+    text(g, who.title, 222, 138, who.kind === 'program' ? C.CYAN : C.YELLOW);
+    text(g, who.role, 222, 148, C.GREY);
     wrap(tip, 124)
       .slice(0, 8)
-      .forEach((l, i) => text(g, l, 192, 164 + i * 9, C.WHITE));
-    text(g, 'Click for next tip', 316, 234, C.DGREY, { align: 'right' });
+      .forEach((l, i) => text(g, l, 192, 163 + i * 9, C.WHITE));
+    text(g, `${who.item} ${(this.tipIdx % tips.length) + 1}/${tips.length}`, 192, 235, C.DGREY);
+    text(g, 'NEXT ►', 316, 235, C.DGREY, { align: 'right' });
 
     // ---------------- Ticker
     g.rect(0, 245, 320, 11, C.BLACK);

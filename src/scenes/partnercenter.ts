@@ -144,8 +144,8 @@ export class PartnerCenterScene implements Scene {
     else if (this.tab === 'spec') this.specTab(app);
     else this.frontierTab(app);
     if (ui.back()) app.go(new HubScene());
-    const hint = inp.lastDevice === 'keyboard' ? '▲▼ PICK  ◄► LIST/BUTTONS  (SHIFT+)TAB: TABS' : keyHint(app);
-    footer(app, `${hint}  AP ${s.ap}`);
+    const hint = inp.lastDevice === 'keyboard' ? '▲▼ PICK  ◄► LIST/BUTTONS  TAB: TABS' : keyHint(app);
+    footer(app, hint, { back: () => app.go(new HubScene()), status: `AP ${s.ap}` });
   }
 
   private setTab(id: Tab): void {

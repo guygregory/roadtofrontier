@@ -4,6 +4,7 @@ import { C, gradient12, rgb12 } from '../engine/palette';
 import { text } from '../engine/font';
 import { SPR, msLogo } from '../engine/sprites';
 import { TitleScene } from './title';
+import { isMobile } from '../mobile';
 
 /**
  * Kickstart-style "insert disk" screen. The first click/key also unlocks Web Audio
@@ -36,8 +37,9 @@ export class BootScene implements Scene {
       const ay = 71 - (Math.floor(t * 4) % 2) * 3;
       for (let i = 0; i < 6; i++) g.hline(160 - i, 160 + i, ay + i, C.ROYAL);
       g.rect(158, ay + 5, 5, 6, C.ROYAL);
-      text(g, 'INSERT DISK - CLICK OR PRESS ANY KEY', 160, 222, C.NAVY, { align: 'center' });
-      text(g, 'Best with sound on. M toggles music, F fullscreen.', 160, 236, C.GREY, { align: 'center' });
+      // Touch screens have no keyboard: no key hints there.
+      text(g, isMobile ? 'INSERT DISK - TAP TO START' : 'INSERT DISK - CLICK OR PRESS ANY KEY', 160, 222, C.NAVY, { align: 'center' });
+      text(g, isMobile ? 'Best with sound on.' : 'Best with sound on. M toggles music, F fullscreen.', 160, 236, C.GREY, { align: 'center' });
       if (app.input.anyKey || app.input.clicked) {
         audio.unlock();
         audio.setMusic(app.settings.music);

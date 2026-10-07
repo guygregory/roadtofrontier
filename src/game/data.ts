@@ -14,7 +14,7 @@ export interface AreaInfo {
   label: string;
   /** Medium-length name for lists and buttons (20 characters at most). */
   mid: string;
-  /** Abbreviation for very tight spaces only, e.g. "D&AI", "MW". */
+  /** Abbreviation for tight spaces (8 characters at most), e.g. "DATA&AI", "MOD WORK". */
   short: string;
   colour: number;
   azure: boolean;
@@ -29,7 +29,7 @@ export const AREA: Record<AreaId, AreaInfo> = {
     name: 'Data & AI (Azure)',
     label: 'Data & AI',
     mid: 'Data & AI',
-    short: 'D&AI',
+    short: 'DATA&AI',
     colour: C.PURPLE,
     azure: true,
     blurb: 'Fabric, Azure AI Foundry, analytics and AI platforms.',
@@ -51,7 +51,7 @@ export const AREA: Record<AreaId, AreaInfo> = {
     name: 'Digital & App Innovation (Azure)',
     label: 'Digital & App Innovation',
     mid: 'Digital & App Innov.',
-    short: 'DAI',
+    short: 'APP INN',
     colour: C.CYAN,
     azure: true,
     blurb: 'App modernization, AI apps, DevOps with GitHub.',
@@ -73,7 +73,7 @@ export const AREA: Record<AreaId, AreaInfo> = {
     name: 'Modern Work',
     label: 'Modern Work',
     mid: 'Modern Work',
-    short: 'MW',
+    short: 'MOD WORK',
     colour: C.MSGREEN,
     azure: false,
     blurb: 'Microsoft 365 Copilot, Teams, endpoints and adoption.',

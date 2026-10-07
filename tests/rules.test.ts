@@ -777,13 +777,14 @@ describe('Partner Development Managers', () => {
 });
 
 describe('area names', () => {
-  it('uses full names where they fit and MW only where space is very tight', () => {
+  it('uses full names where they fit and abbreviations only where space is tight', () => {
     expect(areaName('modern')).toBe('Modern Work');
     expect(areaName('modern', 11)).toBe('Modern Work');
-    expect(areaName('modern', 10)).toBe('MW');
+    expect(areaName('modern', 10)).toBe('MOD WORK');
+    expect(AREAS.map((a) => AREA[a].short)).toEqual(['DATA&AI', 'INFRA', 'APP INN', 'BIZAPPS', 'MOD WORK', 'SECURITY']);
     expect(areaName('dai', 20)).toBe('Digital & App Innov.');
     expect(areaList(['modern', 'security'])).toBe('Modern Work or Security');
-    expect(areaList(['bizapps', 'dai', 'modern'], 30)).toBe('BIZAPPS, DAI or MW');
+    expect(areaList(['bizapps', 'dai', 'modern'], 30)).toBe('BIZAPPS, APP INN or MOD WORK');
   });
   it('designation notices use the full name', () => {
     const s = fresh();

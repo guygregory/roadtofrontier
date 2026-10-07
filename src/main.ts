@@ -20,6 +20,9 @@ import { PlanScene } from './scenes/plan';
 import { ActionsScene } from './scenes/actions';
 import { CompanyScene } from './scenes/company';
 import { EventScene } from './scenes/event';
+import { SetupScene } from './scenes/setup';
+import { PartnerCenterScene } from './scenes/partnercenter';
+import { GameMenuScene } from './scenes/gamemenu';
 
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const stage = document.getElementById('stage') as HTMLDivElement;
@@ -30,6 +33,14 @@ root.classList.toggle('mobile', isMobile);
 
 let scale = 1;
 let rotated = false;
+/** True while the on-screen keyboard is up: keep the layout steady instead of re-fitting the game. */
+let typing = false;
+/** Orientation at the last fit: turning the phone always re-fits, even while typing. */
+let fittedOrientation = '';
+
+function orientation(): string {
+  return screen.orientation?.type ?? (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
+}
 
 /**
  * Mobile: always landscape (the game is turned sideways when the phone is held upright),
@@ -59,7 +70,11 @@ function resizeMobile(): void {
 /** Integer scaling keeps every pixel crisp, like a real low-res display. */
 function resize(): void {
   if (isMobile) {
-    resizeMobile();
+    // An on-screen keyboard shrinks the window: ignore that, but not a turn of the phone.
+    if (!typing || orientation() !== fittedOrientation) {
+      fittedOrientation = orientation();
+      resizeMobile();
+    }
     return;
   }
   const w = window.innerWidth;
@@ -79,10 +94,18 @@ function resize(): void {
 
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', resize);
+document.addEventListener('focusin', (e) => {
+  typing = e.target instanceof HTMLInputElement;
+});
+document.addEventListener('focusout', () => {
+  typing = false;
+  // Re-fit once the on-screen keyboard has gone.
+  window.setTimeout(resize, 300);
+});
 resize();
 
 const g = new Gfx(canvas);
-const input = new Input(canvas, () => scale, () => rotated);
+const input = new Input(canvas, () => scale, () => rotated, isMobile);
 if (isMobile) {
   initTouchpad(input, () => rotated);
   // Fullscreen / orientation lock need a user gesture.
@@ -101,7 +124,7 @@ app.go(new BootScene(), true);
 (window as unknown as { __rtf: App; __rtfScenes: unknown }).__rtf = app;
 (window as unknown as { __rtfUi: unknown }).__rtfUi = ui;
 (window as unknown as { __rtfAudio: unknown }).__rtfAudio = audio;
-(window as unknown as { __rtfScenes: unknown }).__rtfScenes = { EndingScene, YearEndScene, HelpScene, CreditsScene, TitleScene, HubScene, PlanScene, ActionsScene, CompanyScene, EventScene, ShareScene };
+(window as unknown as { __rtfScenes: unknown }).__rtfScenes = { EndingScene, YearEndScene, HelpScene, CreditsScene, TitleScene, HubScene, PlanScene, ActionsScene, CompanyScene, EventScene, ShareScene, SetupScene, PartnerCenterScene, GameMenuScene };
 
 let last = performance.now();
 function loop(now: number): void {

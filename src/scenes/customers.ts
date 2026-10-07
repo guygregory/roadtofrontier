@@ -36,7 +36,7 @@ export class CustomersScene implements Scene {
       text(g, String(k.sat), 314, y, C.WHITE, { align: 'right' });
     });
     if (keys.length === 0) paragraph(g, 'No key accounts yet. Co-sell, events and offers attract them.', 8, 44, 304, C.GREY, 10);
-    if (keys.length > visible) text(g, `${this.first + 1}-${Math.min(keys.length, this.first + visible)} of ${keys.length} (scroll)`, 314, 131, C.GREY, { align: 'right' });
+    if (keys.length > visible) text(g, `${this.first + 1}-${Math.min(keys.length, this.first + visible)} of ${keys.length}`, 260, 131, C.GREY, { align: 'right' });
 
     panel(g, 2, 142, 140, 102, 'BY AREA');
     AREAS.forEach((a, i) => {
@@ -61,6 +61,10 @@ export class CustomersScene implements Scene {
     });
     if (s.targets.length > 0 && ui.button(150, 226, 100, 13, 'GO TO ACQUIRE', { style: 'box' })) app.go(new ActionsScene());
     if (ui.button(262, 226, 52, 13, 'DONE', { style: 'box' }) || ui.back()) app.go(new HubScene());
+    // Pages through the key accounts without a keyboard or mouse wheel (wraps back to the top).
+    if (keys.length > visible && ui.button(266, 129, 48, 10, 'MORE ▼', { style: 'box' })) {
+      this.first = this.first + visible >= keys.length ? 0 : Math.min(keys.length - visible, this.first + visible);
+    }
     footer(app, keys.length > visible ? 'PGUP/PGDN OR WHEEL TO SCROLL ACCOUNTS' : keyHint(app));
   }
 }

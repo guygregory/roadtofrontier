@@ -1,7 +1,8 @@
 import type { App } from '../app';
 import type { Gfx } from '../engine/gfx';
 import { C, gradient12 } from '../engine/palette';
-import { text, measure } from '../engine/font';
+import { ADVANCE, text, measure } from '../engine/font';
+import { isMobile } from '../mobile';
 import { bar, copperRect, ui } from '../engine/ui';
 import { AREA, AreaId } from '../game/data';
 import { money, monthsLabel, turnLabel } from '../game/format';
@@ -27,11 +28,42 @@ export function header(app: App, title: string): void {
   }
 }
 
-export function footer(app: App, hint: string): void {
+export interface FooterOpts {
+  /** Shows a BACK button at the bottom right, for players without a keyboard or right mouse button. */
+  back?: () => void;
+  /** Non-keyboard information (e.g. action points), shown on every device. */
+  status?: string;
+}
+
+/**
+ * Footer strip with key hints (left), optional status text and an optional BACK button (right).
+ * Touch screens have no keyboard, so the key hints are left out there.
+ */
+export function footer(app: App, hint: string, opts: FooterOpts = {}): void {
   const g = app.g;
   g.rect(0, 245, 320, 11, C.DNAVY);
   g.hline(0, 319, 245, C.NAVY);
-  text(g, hint, 4, 247, C.LSLATE);
+  let right = 316;
+  if (opts.back) {
+    const w = 52;
+    // Keyboards have Esc, so only touch screens (D-pad + red button) need to reach it with the focus.
+    if (ui.button(318 - w, 246, w, 10, '◄ BACK', { style: 'box', focusable: isMobile })) opts.back();
+    right = 318 - w - 6;
+  }
+  if (opts.status) {
+    text(g, opts.status, right, 247, C.CYAN, { align: 'right' });
+    right -= measure(opts.status) + 12;
+  }
+  if (isMobile) return;
+  // Hints are groups separated by two spaces: drop whole groups that don't fit, never cut a word.
+  const maxChars = Math.floor((right - 4) / ADVANCE);
+  let shown = '';
+  for (const part of hint.split('  ')) {
+    const next = shown ? `${shown}  ${part}` : part;
+    if (next.length > maxChars) break;
+    shown = next;
+  }
+  text(g, shown, 4, 247, C.LSLATE);
 }
 
 export function background(g: Gfx): void {

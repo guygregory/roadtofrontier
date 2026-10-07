@@ -5,7 +5,7 @@ import { text, paragraph } from '../engine/font';
 import { burst, drawParticles, Particle, starfield, titleText, updateParticles } from '../engine/fx';
 import { panel, ui } from '../engine/ui';
 import { icon, msLogo } from '../engine/sprites';
-import { AREA, AreaId } from '../game/data';
+import { AREA, AREAS, AreaId } from '../game/data';
 import { money, turnLabel } from '../game/format';
 import { finalScore } from '../game/score';
 import { totalCustomers } from '../game/rules';
@@ -19,7 +19,9 @@ function designationList(areas: AreaId[]): string {
     const t = areas.map((a) => AREA[a][key]).join(', ');
     if (t.length <= 39) return t;
   }
-  return areas.map((a) => AREA[a].short).join(', ');
+  const short = areas.map((a) => AREA[a].short).join(', ');
+  if (short.length <= 39) return short;
+  return areas.length === AREAS.length ? `all ${AREAS.length} areas` : `${areas.length} of ${AREAS.length} areas`;
 }
 
 export class EndingScene implements Scene {

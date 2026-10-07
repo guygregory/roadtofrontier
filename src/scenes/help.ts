@@ -4,6 +4,7 @@ import { text, paragraph } from '../engine/font';
 import { panel, ui } from '../engine/ui';
 import { icon } from '../engine/sprites';
 import { background, footer } from './common';
+import { isMobile } from '../mobile';
 
 export const PAGES: { title: string; icon: string; body: string }[] = [
   {
@@ -67,8 +68,10 @@ export const PAGES: { title: string; icon: string; body: string }[] = [
             '• Build {c}repeatable offers{/} and co-sell with Microsoft account teams.\n' +
       '• Be {c}customer zero{/} for Copilot and Azure.\n' +
       '• {c}Unified for Partners{/} softens outages and failing projects.\n' +
-      '• {c}Save{/} from the GAME MENU: a .sav file download.\n\n' +
-      'Controls: mouse, or arrows/WASD + Enter, Esc to go back. Tab/Shift+Tab switch Partner Center tabs. M = music, F = fullscreen.',
+      (isMobile
+        ? '\nControls: tap the screen, or use the D-pad and the red button. BACK buttons return to the previous screen.'
+        : '• {c}Save{/} from the GAME MENU: a .sav file download.\n\n' +
+          'Controls: mouse, or arrows/WASD + Enter, Esc to go back. Tab/Shift+Tab switch Partner Center tabs. M = music, F = fullscreen.'),
   },
 ];
 
@@ -93,6 +96,6 @@ export class HelpScene implements Scene {
       else this.page++;
     }
     if (ui.back()) app.go(this.back);
-    footer(app, 'LEFT/RIGHT TURN PAGES  ESC BACK');
+    footer(app, 'LEFT/RIGHT TURN PAGES  ESC BACK', { back: () => app.go(this.back) });
   }
 }

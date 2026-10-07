@@ -40,7 +40,6 @@ export class ActionsScene implements Scene {
         }
       });
       focusDef = ACTIONS.find((a) => a.id === ui.lastDesc) ?? ACTIONS[0];
-      if (ui.back()) app.go(new HubScene());
     } else if (this.mode === 'options' && this.action) {
       const opts = this.action.options(s);
       text(g, actionTitle(s, this.action), 8, 32, C.YELLOW);
@@ -72,10 +71,6 @@ export class ActionsScene implements Scene {
           .forEach((l, k) => text(g, l, 12, y + 14 + k * 9, o.disabled ? C.DGREY : C.LSLATE));
       });
       if (opts.length === 0) text(g, 'Nothing available.', 8, 48, C.GREY);
-      if (ui.back()) {
-        this.mode = 'list';
-        ui.reset(this.listFocus);
-      }
     } else if (this.mode === 'area' && this.action) {
       text(g, actionTitle(s, this.action), 8, 32, C.YELLOW);
       AREAS.forEach((a, i) => {
@@ -85,11 +80,8 @@ export class ActionsScene implements Scene {
         if (ui.button(12, y, 153, 13, AREA[a].name.replace(' (Azure)', ''), { right: hasDesignation(s, a) ? '★' : '' })) this.perform(app, a);
         text(g, `PCS ${p.total}  certs ${s.areas[a].inter}/${s.areas[a].adv}  cust ${s.areas[a].customers}`, 14, y + 14, C.LSLATE);
       });
-      if (ui.back()) {
-        this.mode = 'options';
-        ui.reset(0);
-      }
     }
+    if (ui.back()) this.goBack(app);
 
     // Detail panel
     panel(g, 170, 16, 148, 228, 'DETAILS');
@@ -121,7 +113,18 @@ export class ActionsScene implements Scene {
       if (focusDef.id === 'frontier_skills') text(g, `FTE ${s.fte}/5   DP-600 ${s.dp600}/3`, 176, 232, C.CYAN);
       if (focusDef.id === 'azure_zero' && !reason) text(g, `Azure credits: ${credits(s.azureCredits)}`, 176, 232, C.CYAN);
     }
-    footer(app, keyHint(app));
+    footer(app, keyHint(app), { back: () => this.goBack(app) });
+  }
+
+  /** Back out one level: area -> options -> action list -> hub. */
+  private goBack(app: App): void {
+    if (this.mode === 'area') {
+      this.mode = 'options';
+      ui.reset(0);
+    } else if (this.mode === 'options') {
+      this.mode = 'list';
+      ui.reset(this.listFocus);
+    } else app.go(new HubScene());
   }
 
   private perform(app: App, area?: AreaId): void {

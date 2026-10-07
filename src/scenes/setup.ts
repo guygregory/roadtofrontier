@@ -9,6 +9,7 @@ import { newGame } from '../game/state';
 import { background, footer, header, keyHint } from './common';
 import { PlanScene } from './plan';
 import { TitleScene } from './title';
+import { isMobile } from '../mobile';
 
 const DEFAULT_NAMES = ['Pixel Partners', 'Copper Cloud', 'Byte Bros', 'Blitter Labs', 'Paula Digital', 'Agnus Advisory', 'Denise Data'];
 
@@ -18,6 +19,8 @@ export class SetupScene implements Scene {
   private name = DEFAULT_NAMES[Math.floor(Math.random() * DEFAULT_NAMES.length)];
   private heritage = 0;
   private difficulty: Difficulty = 'normal';
+  /** Set once the player types with the device's on-screen keyboard (then the tap hint goes). */
+  private typedOnDevice = false;
 
   enter(app: App): void {
     app.input.textMode = true;
@@ -51,6 +54,21 @@ export class SetupScene implements Scene {
     panel(g, 20, 36, 280, 120, 'NAME YOUR COMPANY');
     paragraph(g, 'Every great partner starts somewhere. What is your company called?', 30, 56, 260, C.LGREY);
     g.bevel(30, 84, 260, 16, C.BLACK, C.BLACK, C.LSLATE, true);
+    // Touch screens type through the device's on-screen keyboard: tap the box to bring it up.
+    inp.textRect = { x: 26, y: 70, w: 268, h: 44 };
+    if (inp.fieldValue !== null) {
+      this.typedOnDevice = true;
+      // Phone keyboards type curly apostrophes and dashes (smart punctuation): keep them as plain ones.
+      const v = inp.fieldValue
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\u2013\u2014]/g, '-')
+        .replace(/[^A-Za-z0-9 &.'\-]/g, '')
+        .slice(0, 22);
+      if (v !== this.name) {
+        this.name = v;
+        audio.sfx('type');
+      }
+    }
     for (const ch of inp.typed) {
       if (this.name.length < 22 && /[A-Za-z0-9 &.'\-]/.test(ch)) {
         this.name += ch;
@@ -61,16 +79,20 @@ export class SetupScene implements Scene {
       this.name = this.name.slice(0, -1);
       audio.sfx('type');
     }
+    inp.syncField(this.name, 22);
+    if (inp.field && !this.typedOnDevice) text(g, 'TAP THE BOX TO TYPE', 36, 104, Math.floor(app.t * 2) % 2 ? C.CYAN : C.LSLATE);
     const cursor = Math.floor(app.t * 3) % 2 ? '_' : ' ';
     text(g, this.name + cursor, 36, 89, C.YELLOW);
     text(g, `${this.name.length}/22`, 286, 104, C.GREY, { align: 'right' });
     const ok = this.name.trim().length > 0;
-    if (ui.button(110, 124, 100, 14, 'CONTINUE', { style: 'box', disabled: !ok }) && ok) {
+    // CONTINUE is declared first so it keeps the keyboard focus: Enter continues.
+    if (ui.button(190, 130, 100, 14, 'CONTINUE ►', { style: 'box', disabled: !ok }) && ok) {
       this.step = 1;
       inp.textMode = false;
       ui.reset(0);
     }
-    if (inp.take('back')) this.back(app);
+    // Keyboards have Esc (and Tab/arrows must not move Enter off CONTINUE); touch screens need the button.
+    if (ui.button(30, 130, 60, 14, 'BACK', { style: 'box', focusable: isMobile }) || inp.take('back')) this.back(app);
   }
 
   private heritageStep(app: App): void {

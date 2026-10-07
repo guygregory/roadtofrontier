@@ -33,9 +33,15 @@ export class Input {
   /** Set when a widget consumed this frame's click/enter so nothing else reacts. */
   consumed = false;
   lastDevice: 'mouse' | 'keyboard' = 'mouse';
-  /** When true, printable keys are only delivered as typed text (no WASD/M/F shortcuts). */
-  textMode = false;
+  /** Hidden text box that brings up the device's on-screen keyboard (touch screens only). */
+  readonly field: HTMLInputElement | null = null;
+  /** Logical-screen box of the text being edited: tapping it opens the on-screen keyboard. */
+  textRect: { x: number; y: number; w: number; h: number } | null = null;
+  /** New contents of the on-screen keyboard's text box this frame (null when unchanged). */
+  fieldValue: string | null = null;
 
+  private textOn = false;
+  private pendingField: string | null = null;
   private pendingKeys: Key[] = [];
   private pendingTyped: string[] = [];
   private pendingClick: { x: number; y: number } | null = null;
@@ -49,7 +55,26 @@ export class Input {
     private scaleRef: () => number,
     /** True when the screen is shown rotated 90deg clockwise (mobile held in portrait). */
     private rotatedRef: () => boolean = () => false,
+    /** Touch screens: type through a hidden text box so the on-screen keyboard appears. */
+    softKeyboard = false,
   ) {
+    if (softKeyboard) {
+      const f = document.createElement('input');
+      f.type = 'text';
+      f.id = 'textfield';
+      f.autocomplete = 'off';
+      f.spellcheck = false;
+      f.setAttribute('autocapitalize', 'words');
+      f.setAttribute('autocorrect', 'off');
+      f.setAttribute('enterkeyhint', 'done');
+      f.setAttribute('aria-label', 'Text entry');
+      document.body.appendChild(f);
+      f.addEventListener('input', () => {
+        this.pendingField = f.value;
+        this.pendingAny = true;
+      });
+      this.field = f;
+    }
     const toLogical = (e: { clientX: number; clientY: number }) => {
       const r = canvas.getBoundingClientRect();
       const s = this.scaleRef();
@@ -81,7 +106,10 @@ export class Input {
         this.lastDevice = 'mouse';
       }
       this.pendingAny = true;
-      canvas.focus();
+      // The on-screen keyboard only appears when the text box is focused inside the tap itself.
+      const r = this.textRect;
+      if (this.textOn && r && p.x >= r.x && p.y >= r.y && p.x < r.x + r.w && p.y < r.y + r.h) this.openKeyboard(true);
+      else canvas.focus();
       e.preventDefault();
     };
     const onWheel = (e: WheelEvent) => {
@@ -91,6 +119,12 @@ export class Input {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const printable = e.key.length === 1;
+      // Typing into the hidden text box: its input event carries the text (Android keyboards
+      // report most keys as "Unidentified"), so only keys like Enter are handled here.
+      if (this.field && e.target === this.field && (printable || ['Backspace', 'Delete', 'Unidentified', 'Process'].includes(e.key))) {
+        this.pendingAny = true;
+        return;
+      }
       const k = this.textMode && printable ? null : mapKey(e.key, e.shiftKey);
       this.pendingAny = true;
       this.lastDevice = 'keyboard';
@@ -127,6 +161,42 @@ export class Input {
     this.lastDevice = 'keyboard';
   }
 
+  /** When true, printable keys are only delivered as typed text (no WASD/M/F shortcuts). */
+  get textMode(): boolean {
+    return this.textOn;
+  }
+
+  set textMode(on: boolean) {
+    if (on === this.textOn) return;
+    this.textOn = on;
+    if (on) this.openKeyboard();
+    else {
+      this.textRect = null;
+      this.field?.blur();
+    }
+  }
+
+  /**
+   * Focus the hidden text box so the device shows its keyboard. iOS only shows it for a focus made
+   * inside a tap, so a tap re-focuses the box even if an earlier (programmatic) focus already took.
+   */
+  openKeyboard(fromTap = false): void {
+    const f = this.field;
+    if (!f || !this.textOn) return;
+    if (fromTap && document.activeElement === f) f.blur();
+    f.focus({ preventScroll: true });
+    const n = f.value.length;
+    f.setSelectionRange(n, n);
+  }
+
+  /** Keep the hidden text box in step with the game's copy of the text. */
+  syncField(value: string, maxLength: number): void {
+    const f = this.field;
+    if (!f) return;
+    f.maxLength = maxLength;
+    if (f.value !== value) f.value = value;
+  }
+
   /** Move pending DOM events into this frame's state. Call once at frame start. */
   poll(): void {
     this.keys = new Set(this.pendingKeys);
@@ -138,6 +208,8 @@ export class Input {
     this.wheel = this.pendingWheel;
     this.anyKey = this.pendingAny;
     this.consumed = false;
+    this.fieldValue = this.pendingField;
+    this.pendingField = null;
     this.pendingKeys = [];
     this.pendingTyped = [];
     this.pendingClick = null;

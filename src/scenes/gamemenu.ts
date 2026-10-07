@@ -10,6 +10,7 @@ import { HubScene } from './hub';
 import { HelpScene } from './help';
 import { TitleScene } from './title';
 import { toggleFullscreen } from '../fullscreen';
+import { isMobile } from '../mobile';
 
 export class GameMenuScene implements Scene {
   music = 'hub';
@@ -26,8 +27,9 @@ export class GameMenuScene implements Scene {
       y += 15;
     };
     row('RESUME', () => app.go(new HubScene()));
-    row('SAVE GAME', () => exportSave(app), app.hasUnsavedProgress() ? 'download .sav' : 'saved');
-    row('LOAD GAME', () => {
+    // .sav files need a file system, so phones and tablets don't offer them.
+    if (!isMobile) row('SAVE GAME', () => exportSave(app), app.hasUnsavedProgress() ? 'download .sav' : 'saved');
+    if (!isMobile) row('LOAD GAME', () => {
       const load = () => importSave(app);
       if (!app.hasUnsavedProgress()) load();
       else
@@ -57,7 +59,14 @@ export class GameMenuScene implements Scene {
     row('HOW TO PLAY', () => app.go(new HelpScene(this)));
     row('QUIT TO TITLE', () =>
       app.dialog(
-        app.hasUnsavedProgress()
+        isMobile
+          ? {
+              title: 'QUIT?',
+              text: 'Return to the title screen? This game will end - games cannot be saved on this device.',
+              icon: 'door',
+              buttons: [{ label: 'YES, QUIT', action: () => app.go(new TitleScene()) }, { label: 'NO' }],
+            }
+          : app.hasUnsavedProgress()
           ? {
               title: 'QUIT?',
               text: `Return to the title screen? Progress since your last save will be lost.\n\nSAVE & QUIT downloads {y}${saveFileName()}{/} first - use LOAD GAME on the title screen to carry on later.`,

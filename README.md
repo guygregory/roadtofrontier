@@ -22,19 +22,21 @@ Web Audio, with a new in-game tune every financial year. No game engine and no b
   for quick picks. **M** toggles music, **F** toggles fullscreen.
 - **Phones & tablets**: the game always plays in landscape and fills the screen height. Tap
   menu items directly, or use the on-screen D-pad (left) and red button (right, = Enter).
-  Add the page to your home screen to play it full screen as a web app.
+  Every screen has an on-screen **BACK** button, key hints are hidden, and tapping the
+  company name box brings up the device's keyboard. Saving to .sav files is not offered on
+  phones and tablets. Add the page to your home screen to play it full screen as a web app.
 - **Partner Center**: ↑/↓ pick a designation or specialization, ←/→ switch between the
   list and the audit booking buttons, **Tab** / **Shift+Tab** switch between the
   Solutions Partner, Specializations and Frontier tabs.
 - **Saving**: choose **SAVE GAME** in the in-game **GAME MENU** to download your progress as a
-  .sav file (named like rontier-2026-10-25.sav). Use **LOAD GAME (.SAV)** on the title
+  .sav file (named like `frontier-2026-10-25.sav`). Use **LOAD GAME (.SAV)** on the title
   screen, or LOAD GAME in the game menu, to carry on. Save files are checksummed and lightly
   scrambled, so edited files are rejected. Nothing is saved in the browser except settings,
   and the game warns you before closing the tab or quitting with unsaved progress.
 - **Sharing**: when the game ends, choose **SHARE** to post your result to **LinkedIn** or
   **X**. The game writes the post for you (score, partner name, outcome, difficulty, a link
   to <https://aka.ms/roadtofrontier> and **#roadtofrontier**), copies it to your clipboard and
-  downloads a 1280×672 pixel-art result card (rontier-result-YYYY-MM-DD.png) to attach.
+  downloads a 1280×672 pixel-art result card (`frontier-result-YYYY-MM-DD.png`) to attach.
 
 ### The journey
 
@@ -145,6 +147,7 @@ node scripts/smoke4.mjs   # late-game screens (designations, specializations, ch
 node scripts/smoke5.mjs   # advisors, CSP after enrolling, Azure credits & customer zero, Partner Success renewal, FY32
 node scripts/smoke6.mjs   # Partner Center keys, area names, PDM portraits and changes, a tune per FY
 node scripts/smoke7.mjs   # .sav export from the game menu, quit warning, tampered and valid .sav import
+node scripts/smoke8.mjs   # phone emulation: no key hints or .sav options, BACK buttons, on-screen keyboard
 ```
 
 Screenshots are written to `screenshots/`. `smoke6.mjs` also renders each FY tune offline,

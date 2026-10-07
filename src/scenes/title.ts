@@ -15,11 +15,14 @@ import { turnLabel } from '../game/format';
 import type { GameState } from '../game/types';
 import { homeScreenHint, isMobile, isStandalone } from '../mobile';
 
+const KEYS_TIP = isMobile ? '' : 'PRESS M TO TOGGLE MUSIC, F FOR FULLSCREEN ... ';
+
 const SCROLL =
   '*** ROAD TO FRONTIER *** GROW YOUR MICROSOFT PARTNER FROM NETWORK MEMBER TO SOLUTIONS PARTNER, SPECIALIZED AND FINALLY FRONTIER PARTNER ... ' +
   'INVEST IN SKILLING, BUILD REPEATABLE OFFERS, JOIN CSP, CO-SELL WITH MICROSOFT AND WATCH YOUR CASH! ... ' +
   'GREETINGS TO EVERY PARTNER, DISTRIBUTOR, PDM AND PARTNER SUCCESS HERO OUT THERE ... ' +
-  'PRESS M TO TOGGLE MUSIC, F FOR FULLSCREEN ... THE ROAD AWAITS!       ';
+  KEYS_TIP +
+  'THE ROAD AWAITS!       ';
 
 export class TitleScene implements Scene {
   music = 'title';
@@ -39,7 +42,9 @@ export class TitleScene implements Scene {
     clearLegacySaves();
     app.message(
       'OLD SAVE FOUND',
-      `Welcome back, ${s.company} (${turnLabel(s.turn)}).\n\nGames are no longer saved in the browser. Use {y}SAVE GAME{/} in the GAME MENU to download a .sav file, and LOAD GAME on the title screen to carry on later.`,
+      isMobile
+        ? `Welcome back, ${s.company} (${turnLabel(s.turn)}).\n\nGames are no longer saved in the browser, so this is your last chance to finish this one.`
+        : `Welcome back, ${s.company} (${turnLabel(s.turn)}).\n\nGames are no longer saved in the browser. Use {y}SAVE GAME{/} in the GAME MENU to download a .sav file, and LOAD GAME on the title screen to carry on later.`,
       'good',
       'floppy',
       () => resumeGame(app, s),
@@ -68,7 +73,8 @@ export class TitleScene implements Scene {
     const items: [string, () => void][] = [
       ['NEW GAME', () => app.go(new SetupScene())],
       ...(this.legacy ? [['CONTINUE OLD SAVE', () => this.continueLegacy(app)] as [string, () => void]] : []),
-      ['LOAD GAME (.SAV)', () => importSave(app)],
+      // .sav files need a file system, so phones and tablets don't offer them.
+      ...(isMobile ? [] : [['LOAD GAME (.SAV)', () => importSave(app)] as [string, () => void]]),
       ['HOW TO PLAY', () => app.go(new HelpScene(this))],
       ['CREDITS', () => app.go(new CreditsScene())],
     ];

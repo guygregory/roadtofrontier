@@ -19,6 +19,8 @@ export interface ButtonOpts {
   /** Number key (1-9) that activates this button directly. */
   hotkey?: string;
   sound?: boolean;
+  /** False: click/tap only, left out of keyboard focus (e.g. a BACK button when Esc does the same). */
+  focusable?: boolean;
 }
 
 /**
@@ -107,7 +109,8 @@ export class UI {
     const g = this.g;
     const inp = this.input;
     const disabled = !!opts.disabled;
-    const [, focused] = this.register(x, y, w, h, opts.desc, disabled);
+    const focusable = opts.focusable !== false;
+    const focused = focusable ? this.register(x, y, w, h, opts.desc, disabled)[1] : inp.lastDevice === 'mouse' && inp.inRect(x, y, w, h);
     const style = opts.style ?? 'menu';
     const hover = focused;
 
@@ -149,7 +152,7 @@ export class UI {
     let activated = false;
     if (!inp.consumed) {
       if (inp.clickIn(x, y, w, h)) activated = true;
-      else if (focused && inp.keys.has('enter')) activated = true;
+      else if (focusable && focused && inp.keys.has('enter')) activated = true;
       else if (opts.hotkey && inp.typed.includes(opts.hotkey) && !inp.textMode) activated = true;
     }
     if (activated) {

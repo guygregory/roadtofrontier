@@ -36,14 +36,18 @@ export class PlanScene implements Scene {
     else if (this.step === 2) this.focus(app, false);
     else if (this.step === 3) this.bet(app);
     else this.budget(app);
-    footer(app, this.step === 4 ? 'LEFT/RIGHT CHANGE LEVELS  ENTER CONFIRM' : keyHint(app));
+    // The briefing comes first, so only the later steps can go back.
+    footer(app, this.step === 4 ? 'LEFT/RIGHT CHANGE LEVELS  ENTER CONFIRM' : keyHint(app), this.step > 0 ? { back: () => this.stepBack() } : {});
+  }
+
+  private stepBack(): void {
+    if (this.step === 0) return;
+    this.step--;
+    ui.reset(0);
   }
 
   private nav(app: App, canBack = true): void {
-    if (canBack && ui.back() && this.step > 0) {
-      this.step--;
-      ui.reset(0);
-    }
+    if (canBack && ui.back()) this.stepBack();
     void app;
   }
 
@@ -76,7 +80,6 @@ export class PlanScene implements Scene {
       const profit = last.reduce((a, h) => a + h.profit, 0);
       tips.push(`FY${fy - 1} wrap-up: revenue {y}${money(rev)}{/}, profit ${profit >= 0 ? '{g}' : '{r}'}${money(profit)}{/}.`);
       tips.push(`You hold ${s.designations.length} designation${s.designations.length === 1 ? '' : 's'} and ${s.specs.length} specialization${s.specs.length === 1 ? '' : 's'}.`);
-      if (fy === 32) tips.push('{c}FY32 and beyond:{/} there is no deadline. Keep going until you reach the Frontier - or the money runs out.');
       tips.push('Remember: Frontier needs Copilot, Data Security, Identity & Access, and AI Apps or AI Platform specializations.');
     }
     if (who.kind === 'distributor') tips.push(`Talk soon! - ${DISTRIBUTOR.am}, ${DISTRIBUTOR.company}`);
@@ -128,7 +131,8 @@ export class PlanScene implements Scene {
       const held = hasDesignation(s, a);
       const sel = primary ? s.focus.primary === a : s.focus.secondary === a;
       g.rect(14, y + 5, 5, 5, AREA[a].colour);
-      if (ui.button(20, y, 286, 16, `${AREA[a].name}${held ? ' ?' : p.qualified ? ' !' : ''}`, { selected: sel, colour: held ? C.GREEN : p.qualified ? C.YELLOW : undefined })) {
+      // Without the "(Azure)" suffix, so the longest names stay clear of the PCS bars.
+      if (ui.button(20, y, 286, 16, `${AREA[a].label}${held ? ' ?' : p.qualified ? ' !' : ''}`, { selected: sel, colour: held ? C.GREEN : p.qualified ? C.YELLOW : undefined })) {
         if (primary) {
           s.focus.primary = a;
           if (s.focus.secondary === a) s.focus.secondary = null;

@@ -41,7 +41,7 @@ Web Audio, with a new in-game tune every financial year. No game engine and no b
 - **Sharing**: when the game ends, choose **SHARE** to post your result to **LinkedIn** or
   **X**. The game writes the post for you (score, partner name, outcome, difficulty, a link
   to <https://aka.ms/roadtofrontier> and **#roadtofrontier**), copies it to your clipboard and
-  downloads a 1280×672 pixel-art result card (`frontier-result-YYYY-MM-DD.png`) to attach.
+  downloads a 1080×1350 portrait pixel-art result card (`frontier-result-YYYY-MM-DD.png`) to attach.
 
 ### The journey
 

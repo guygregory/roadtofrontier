@@ -5,7 +5,7 @@ import { paragraph } from '../engine/font';
 import { ui } from '../engine/ui';
 import { downloadBlob } from '../files';
 import { shareImageName, shareIntentUrl, shareMessage, ShareNetwork } from '../game/share';
-import { CARD_H, drawShareCard, shareCardBlob } from '../sharecard';
+import { drawShareCardPreview, shareCardBlob } from '../sharecard';
 
 /** Preview the share card, then post it to LinkedIn or X (image downloaded, message pre-filled and copied). */
 export class ShareScene implements Scene {
@@ -50,14 +50,14 @@ export class ShareScene implements Scene {
     const s = app.state;
     const g = app.g;
     if (!s) return;
-    drawShareCard(g, s, this.score);
-    g.rect(0, CARD_H, 320, 256 - CARD_H, C.DNAVY);
-    g.hline(0, 319, CARD_H, C.MSYELLOW);
+    g.fill(C.DNAVY);
+    drawShareCardPreview(g, s, this.score, 94, 3, 132, 165);
+    g.hline(0, 319, 171, C.MSYELLOW);
     paragraph(
       g,
       'Share your result! We pre-write the post with a link to the game and {c}#roadtofrontier{/}, and download this card for you to attach.',
       8,
-      CARD_H + 6,
+      177,
       304,
       C.CREAM,
       10,

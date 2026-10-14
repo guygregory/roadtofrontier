@@ -11,20 +11,20 @@ export interface Sprite {
 }
 
 /**
- * Software framebuffer (320x256, PAL Amiga low-res). All drawing goes through
+ * Software framebuffer (320x256 PAL Amiga low-res by default). All drawing goes through
  * palette indices (or explicit 12-bit "copper" colours) into a Uint32 buffer
  * that is pushed to the canvas once per frame.
  */
 export class Gfx {
-  readonly w = SCREEN_W;
-  readonly h = SCREEN_H;
+  readonly w: number;
+  readonly h: number;
   readonly buf: Uint32Array;
   private img: ImageData;
   private ctx: CanvasRenderingContext2D | null;
   private cx0 = 0;
   private cy0 = 0;
-  private cx1 = SCREEN_W;
-  private cy1 = SCREEN_H;
+  private cx1: number;
+  private cy1: number;
   /** Drawing offset (applied to all primitives except fill). */
   tx = 0;
   ty = 0;
@@ -34,38 +34,42 @@ export class Gfx {
     this.ty = y;
   }
 
-  constructor(canvas?: HTMLCanvasElement) {
+  constructor(canvas?: HTMLCanvasElement, width = SCREEN_W, height = SCREEN_H) {
+    this.w = width;
+    this.h = height;
+    this.cx1 = width;
+    this.cy1 = height;
     this.ctx = canvas ? canvas.getContext('2d', { alpha: false }) : null;
-    this.img = this.ctx ? this.ctx.createImageData(SCREEN_W, SCREEN_H) : ({ data: new Uint8ClampedArray(SCREEN_W * SCREEN_H * 4) } as ImageData);
+    this.img = this.ctx ? this.ctx.createImageData(width, height) : ({ data: new Uint8ClampedArray(width * height * 4) } as ImageData);
     this.buf = new Uint32Array(this.img.data.buffer);
   }
 
   clip(x: number, y: number, w: number, h: number): void {
     this.cx0 = Math.max(0, x);
     this.cy0 = Math.max(0, y);
-    this.cx1 = Math.min(SCREEN_W, x + w);
-    this.cy1 = Math.min(SCREEN_H, y + h);
+    this.cx1 = Math.min(this.w, x + w);
+    this.cy1 = Math.min(this.h, y + h);
   }
 
   unclip(): void {
     this.cx0 = 0;
     this.cy0 = 0;
-    this.cx1 = SCREEN_W;
-    this.cy1 = SCREEN_H;
+    this.cx1 = this.w;
+    this.cy1 = this.h;
   }
 
   pset(x: number, y: number, c: number): void {
     x = (x + this.tx) | 0;
     y = (y + this.ty) | 0;
     if (x < this.cx0 || y < this.cy0 || x >= this.cx1 || y >= this.cy1) return;
-    this.buf[y * SCREEN_W + x] = PALETTE[c];
+    this.buf[y * this.w + x] = PALETTE[c];
   }
 
   psetRGB(x: number, y: number, rgb: number): void {
     x = (x + this.tx) | 0;
     y = (y + this.ty) | 0;
     if (x < this.cx0 || y < this.cy0 || x >= this.cx1 || y >= this.cy1) return;
-    this.buf[y * SCREEN_W + x] = rgb;
+    this.buf[y * this.w + x] = rgb;
   }
 
   fill(c: number): void {
@@ -85,7 +89,7 @@ export class Gfx {
     const y1 = Math.min(this.cy1, (y + h) | 0);
     if (x1 <= x0 || y1 <= y0) return;
     for (let yy = y0; yy < y1; yy++) {
-      const row = yy * SCREEN_W;
+      const row = yy * this.w;
       this.buf.fill(rgb, row + x0, row + x1);
     }
   }

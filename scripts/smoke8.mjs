@@ -23,6 +23,17 @@ async function open(mobile) {
   const ctx = await browser.newContext(
     mobile ? { viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport: { width: 640, height: 512 } },
   );
+  if (mobile) {
+    await ctx.addInitScript(() => {
+      window.__testOrientation = 'landscape-primary';
+      window.__viewportDescriptors = {
+        width: Object.getOwnPropertyDescriptor(window, 'innerWidth'),
+        height: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
+      };
+      Object.defineProperty(screen.orientation, 'type', { configurable: true, get: () => window.__testOrientation });
+      Object.defineProperty(window, 'orientation', { configurable: true, value: undefined });
+    });
+  }
   const page = await ctx.newPage();
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(String(e)));
@@ -37,10 +48,14 @@ const st = (page) => page.evaluate(() => window.__rtf.state);
 // Class names are minified in the build, so match scenes against the debug hook's classes.
 const scene = (page) => page.evaluate(() => Object.entries(window.__rtfScenes).find(([, c]) => window.__rtf.scene instanceof c)?.[0] ?? '?');
 const go = (page, name) => page.evaluate((n) => window.__rtf.go(new window.__rtfScenes[n](), true), name);
-/** Tap a point on the 320x256 logical screen (the canvas may be scaled, but not rotated in landscape). */
+/** Tap a point on the 320x256 logical screen, including the rotated portrait fallback. */
 async function tap(page, x, y) {
   const box = await page.locator('#screen').boundingBox();
-  await page.touchscreen.tap(box.x + ((x + 0.5) * box.width) / 320, box.y + ((y + 0.5) * box.height) / 256);
+  const rotated = await page.evaluate(() => document.documentElement.classList.contains('portrait'));
+  await page.touchscreen.tap(
+    box.x + (rotated ? (1 - (y + 0.5) / 256) : (x + 0.5) / 320) * box.width,
+    box.y + (rotated ? (x + 0.5) / 320 : (y + 0.5) / 256) * box.height,
+  );
   // Scene changes fade for ~0.4s, during which input is ignored.
   await wait(page, 700);
 }
@@ -58,9 +73,68 @@ check('title screen reached', menu === 'TitleScene', menu);
 await tap(m, 160, 236 - (3 * 17 + 12) + 6 + 7);
 check('setup opened by tapping NEW GAME', (await scene(m)) === 'SetupScene', await scene(m));
 await shot(m, 'setup-name');
-// Tap the name box: the hidden text field takes the focus, which brings up the device keyboard.
+check('setup does not focus the name field without a tap', await m.evaluate(() => document.activeElement?.id !== 'textfield'));
+await m.evaluate(() => {
+  window.__fieldBlurs = 0;
+  document.getElementById('textfield').addEventListener('blur', () => window.__fieldBlurs++);
+});
+// Tap the native name box; its default action focuses it without a canvas focus cycle.
 await tap(m, 120, 92);
 check('tapping the name box focuses the text field', await m.evaluate(() => document.activeElement?.id === 'textfield'));
+check('native input is aligned with the name box', await m.evaluate(() => {
+  const canvas = document.getElementById('screen').getBoundingClientRect();
+  const f = document.getElementById('textfield').getBoundingClientRect();
+  return Math.abs(f.left - (canvas.left + canvas.width * 30 / 320)) < 1 &&
+    Math.abs(f.top - (canvas.top + canvas.height * 84 / 256)) < 1 &&
+    parseFloat(getComputedStyle(document.getElementById('textfield')).fontSize) >= 16;
+}));
+await tap(m, 120, 92);
+check('repeated taps retain focus without blurring', await m.evaluate(() => document.activeElement?.id === 'textfield' && window.__fieldBlurs === 0));
+await m.evaluate(() => {
+  Object.defineProperty(window.visualViewport, 'height', { configurable: true, value: 140 });
+  window.visualViewport.dispatchEvent(new Event('resize'));
+});
+check('keyboard visual viewport keeps the field and Continue row visible', await m.evaluate(() => {
+  const field = document.getElementById('textfield').getBoundingClientRect();
+  const canvas = document.getElementById('screen').getBoundingClientRect();
+  return field.top >= 8 && field.bottom <= 132 &&
+    canvas.top + canvas.height * 144 / 256 <= 133 &&
+    document.activeElement?.id === 'textfield' && window.__fieldBlurs === 0;
+}));
+await m.evaluate(() => {
+  delete window.visualViewport.height;
+  window.visualViewport.dispatchEvent(new Event('resize'));
+});
+const fit = await m.evaluate(() => ({
+  width: document.getElementById('screen').style.width,
+  height: document.getElementById('screen').style.height,
+  portrait: document.documentElement.classList.contains('portrait'),
+}));
+// Simulate a keyboard-only window resize, not a change to physical screen orientation.
+await m.evaluate(() => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 100 });
+  window.dispatchEvent(new Event('resize'));
+});
+check('keyboard resizing preserves scale and landscape', await m.evaluate((before) =>
+  document.getElementById('screen').style.width === before.width &&
+  document.getElementById('screen').style.height === before.height &&
+  document.documentElement.classList.contains('portrait') === before.portrait, fit));
+await m.evaluate(() => {
+  window.__testOrientation = undefined;
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 100 });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 390 });
+  window.dispatchEvent(new Event('resize'));
+});
+check('missing orientation API does not mistake keyboard aspect inversion for rotation', await m.evaluate((before) =>
+  document.getElementById('screen').style.width === before.width &&
+  !document.documentElement.classList.contains('portrait'), fit));
+await m.evaluate(() => {
+  window.__testOrientation = 'landscape-primary';
+  Object.defineProperty(window, 'innerWidth', window.__viewportDescriptors.width);
+  Object.defineProperty(window, 'innerHeight', window.__viewportDescriptors.height);
+  window.dispatchEvent(new Event('resize'));
+});
 await m.evaluate(() => {
   const f = document.getElementById('textfield');
   f.value = '';
@@ -71,13 +145,81 @@ await m.keyboard.insertText('Tap Tech');
 await wait(m, 300);
 await shot(m, 'setup-typed');
 check('typing on the on-screen keyboard names the company', (await m.evaluate(() => window.__rtf.scene.name)) === 'Tap Tech', await m.evaluate(() => window.__rtf.scene.name));
-await m.keyboard.press('Enter');
+await m.evaluate(() => {
+  const f = document.getElementById('textfield');
+  f.dispatchEvent(new CompositionEvent('compositionstart'));
+  f.value = 'Composing';
+  f.dispatchEvent(new Event('input'));
+  f.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }));
+});
+await wait(m, 100);
+check('composition is not overwritten or mistaken for Continue', await m.evaluate(() =>
+  document.getElementById('textfield').value === 'Composing' && window.__rtf.scene.step === 0));
+await m.evaluate(() => {
+  const f = document.getElementById('textfield');
+  f.value = 'Tap Tech';
+  f.dispatchEvent(new CompositionEvent('compositionend'));
+});
+await wait(m, 100);
+await m.keyboard.press('End');
+await m.keyboard.press('Backspace');
+await wait(m, 100);
+check('native deletion updates the company name', await m.evaluate(() => window.__rtf.scene.name === 'Tap Tec'));
+await m.evaluate(() => {
+  const f = document.getElementById('textfield');
+  f.value = 'O\u2019Brien\u2014Tech!_' + 'A'.repeat(30);
+  f.dispatchEvent(new Event('input'));
+});
+await wait(m, 100);
+check('smart punctuation, allowed characters and 22-character limit preserved', await m.evaluate(() =>
+  window.__rtf.scene.name === "O'Brien-Tech" + 'A'.repeat(10) &&
+  document.getElementById('textfield').value === window.__rtf.scene.name));
+await m.evaluate(() => {
+  const f = document.getElementById('textfield');
+  f.value = 'Tap Tech';
+  f.dispatchEvent(new Event('input'));
+  f.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+});
 await wait(m, 400);
 check('Enter on the on-screen keyboard continues', await m.evaluate(() => window.__rtf.scene.step === 1));
 check('keyboard closed after continuing', await m.evaluate(() => document.activeElement?.id !== 'textfield'));
+check('final input before Enter is retained and field hidden', await m.evaluate(() =>
+  window.__rtf.scene.name === 'Tap Tech' && document.getElementById('textfield').hidden));
+await tap(m, 40, 228);
+check('Back restores name entry without reopening keyboard', await m.evaluate(() =>
+  window.__rtf.scene.step === 0 && window.__rtf.scene.name === 'Tap Tech' &&
+  !document.getElementById('textfield').hidden && document.activeElement?.id !== 'textfield'),
+  JSON.stringify(await m.evaluate(() => ({ step: window.__rtf.scene.step, name: window.__rtf.scene.name, hidden: document.getElementById('textfield').hidden, focus: document.activeElement?.id }))));
+await tap(m, 120, 92);
+await m.evaluate(() => {
+  document.getElementById('textfield').setSelectionRange(1, 3);
+});
+await wait(m, 150);
+check('frames preserve native selection', await m.evaluate(() => {
+  const f = document.getElementById('textfield');
+  return document.activeElement === f && f.selectionStart === 1 && f.selectionEnd === 3;
+}));
+await m.evaluate(() => {
+  const f = document.getElementById('textfield');
+  f.value = '';
+  f.dispatchEvent(new Event('input'));
+});
+await wait(m, 100);
+await tap(m, 240, 137);
+check('empty names cannot Continue', await m.evaluate(() => window.__rtf.scene.step === 0));
+await tap(m, 120, 92);
+await m.keyboard.insertText('Tap Tech');
+await wait(m, 100);
+await tap(m, 240, 137);
+check('Continue button advances and hides the native field', await m.evaluate(() =>
+  window.__rtf.scene.step === 1 && document.getElementById('textfield').hidden));
 // Heritage -> difficulty -> welcome -> plan
 await tap(m, 60, 81);
+check('heritage selected after keyboard entry', await m.evaluate(() => window.__rtf.scene.step === 2),
+  String(await m.evaluate(() => window.__rtf.scene.step)));
 await tap(m, 100, 71);
+check('difficulty selected after keyboard entry', await m.evaluate(() => window.__rtf.scene.step === 3),
+  String(await m.evaluate(() => window.__rtf.scene.step)));
 await tap(m, 250, 229);
 check('plan reached', (await scene(m)) === 'PlanScene', await scene(m));
 await tap(m, 250, 229); // PLAN THE YEAR
@@ -128,6 +270,50 @@ check('BACK returns to the hub from actions', (await scene(m)) === 'HubScene', a
 await tap(m, 200, 122); // GAME MENU (hub menu item 8)
 check('game menu opened', (await scene(m)) === 'GameMenuScene', await scene(m));
 await shot(m, 'gamemenu');
+// Actual device rotation while editing, followed by the portrait fallback.
+await go(m, 'SetupScene');
+await wait(m, 100);
+await tap(m, 120, 92);
+await m.evaluate(() => {
+  window.__testOrientation = 'portrait-primary';
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 844 });
+  window.dispatchEvent(new Event('orientationchange'));
+});
+await wait(m, 500);
+check('actual rotation updates layout while editing without losing focus', await m.evaluate(() =>
+  document.documentElement.classList.contains('portrait') && document.activeElement?.id === 'textfield'));
+check('portrait name entry shows a non-blocking orientation hint', await m.evaluate(() =>
+  getComputedStyle(document.getElementById('orientation-hint')).display !== 'none' &&
+  getComputedStyle(document.getElementById('orientation-hint')).pointerEvents === 'none'));
+await m.setViewportSize({ width: 390, height: 844 });
+await tap(m, 120, 92);
+check('rotated native name box remains tappable', await m.evaluate(() => document.activeElement?.id === 'textfield'));
+await tap(m, 240, 137);
+check('rotated Continue coordinates work', await m.evaluate(() => window.__rtf.scene.step === 1));
+await m.evaluate(() => {
+  window.__testOrientation = 'landscape-primary';
+  Object.defineProperty(window, 'innerWidth', window.__viewportDescriptors.width);
+  Object.defineProperty(window, 'innerHeight', window.__viewportDescriptors.height);
+});
+await m.setViewportSize({ width: 844, height: 390 });
+await m.evaluate(() => window.dispatchEvent(new Event('orientationchange')));
+await wait(m, 500);
+check('landscape rotation removes CSS rotation and hint', await m.evaluate(() =>
+  !document.documentElement.classList.contains('portrait') &&
+  getComputedStyle(document.getElementById('orientation-hint')).display === 'none'));
+await go(m, 'SetupScene');
+await wait(m, 100);
+await tap(m, 120, 92);
+await go(m, 'TitleScene');
+check('scene exit hides and blurs the field', await m.evaluate(() =>
+  document.getElementById('textfield').hidden && document.activeElement?.id !== 'textfield'));
+await go(m, 'SetupScene');
+await wait(m, 100);
+await tap(m, 120, 92);
+await tap(m, 50, 137);
+check('name-step Back returns to title and hides the field', await m.evaluate(() =>
+  window.__rtf.scene instanceof window.__rtfScenes.TitleScene && document.getElementById('textfield').hidden));
 await m.close();
 
 // ---------------------------------------------------------------- desktop
@@ -137,6 +323,11 @@ await wait(d, 3800);
 await shot(d, 'desktop-title');
 check('desktop not treated as mobile', !(await d.evaluate(() => document.documentElement.classList.contains('mobile'))));
 check('desktop has no hidden text field', !(await d.evaluate(() => !!document.getElementById('textfield'))));
+await go(d, 'SetupScene');
+await d.keyboard.press('m');
+await d.keyboard.press('f');
+await wait(d, 100);
+check('desktop M/F type into names instead of activating shortcuts', await d.evaluate(() => window.__rtf.scene.name.endsWith('mf')));
 
 console.log('FAILURES:', failures.length ? failures.join(', ') : 'none');
 console.log('ERRORS:', errors.length ? errors.join('\n') : 'none');

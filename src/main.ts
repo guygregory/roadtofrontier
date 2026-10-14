@@ -7,7 +7,7 @@ import { ui } from './engine/ui';
 import { loadSettings } from './game/save';
 import { BootScene } from './scenes/boot';
 import { toggleFullscreen } from './fullscreen';
-import { isMobile, lockLandscape } from './mobile';
+import { isMobile, lockLandscape, devicePortrait } from './mobile';
 import { initTouchpad } from './touchpad';
 import { ShareScene } from './scenes/share';
 import { EndingScene } from './scenes/ending';
@@ -36,18 +36,18 @@ let rotated = false;
 /** True while the on-screen keyboard is up: keep the layout steady instead of re-fitting the game. */
 let typing = false;
 /** Orientation at the last fit: turning the phone always re-fits, even while typing. */
-let fittedOrientation = '';
-
-function orientation(): string {
-  return screen.orientation?.type ?? (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
-}
+let fittedOrientation: boolean | null = null;
+let centerX = 0;
+let centerY = 0;
+let keyboardClosing = false;
+let closeTimer = 0;
 
 /**
  * Mobile: always landscape (the game is turned sideways when the phone is held upright),
  * filling the full height with the D-pad and fire button in the space either side.
  */
-function resizeMobile(): void {
-  rotated = window.innerHeight > window.innerWidth;
+function resizeMobile(portrait: boolean): void {
+  rotated = portrait;
   root.classList.toggle('portrait', rotated);
   const w = rotated ? window.innerHeight : window.innerWidth;
   const h = rotated ? window.innerWidth : window.innerHeight;
@@ -58,6 +58,10 @@ function resizeMobile(): void {
   const side = (w - cw) / 2;
   shell.style.width = `${w}px`;
   shell.style.height = `${h}px`;
+  centerX = window.innerWidth / 2;
+  centerY = window.innerHeight / 2;
+  shell.style.left = `${centerX}px`;
+  shell.style.top = `${centerY}px`;
   shell.style.setProperty('--side', `${side}px`);
   shell.style.setProperty('--pad', `${Math.round(Math.min(side * 0.85, h * 0.5, 200))}px`);
   canvas.style.width = `${cw}px`;
@@ -68,13 +72,16 @@ function resizeMobile(): void {
 }
 
 /** Integer scaling keeps every pixel crisp, like a real low-res display. */
-function resize(): void {
+function resize(forceOrientation = false): void {
   if (isMobile) {
-    // An on-screen keyboard shrinks the window: ignore that, but not a turn of the phone.
-    if (!typing || orientation() !== fittedOrientation) {
-      fittedOrientation = orientation();
-      resizeMobile();
+    const portrait = devicePortrait() ?? ((typing || keyboardClosing) && !forceOrientation
+      ? fittedOrientation ?? window.innerHeight > window.innerWidth
+      : window.innerHeight > window.innerWidth);
+    if ((!typing && !keyboardClosing) || forceOrientation || portrait !== fittedOrientation) {
+      fittedOrientation = portrait;
+      resizeMobile(portrait);
     }
+    positionForKeyboard();
     return;
   }
   const w = window.innerWidth;
@@ -92,16 +99,56 @@ function resize(): void {
   crt.style.backgroundSize = `100% ${Math.max(2, Math.round(scale))}px, 100% 100%`;
 }
 
-window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', resize);
+/** Keep the field visible without scaling or rotating the game when the keyboard opens. */
+function positionForKeyboard(): void {
+  if (!isMobile) return;
+  shell.style.left = `${centerX}px`;
+  shell.style.top = `${centerY}px`;
+  const field = document.activeElement;
+  const viewport = window.visualViewport;
+  if (!typing || !(field instanceof HTMLInputElement) || !viewport) return;
+  const r = field.getBoundingClientRect();
+  const top = viewport.offsetTop + 8;
+  const bottom = viewport.offsetTop + viewport.height - 8;
+  // Include the Continue/Back row in landscape when it fits above the keyboard.
+  const extra = rotated ? 0 : Math.min(44 * scale, Math.max(0, bottom - top - r.height));
+  const shift = r.top < top ? top - r.top : Math.min(0, bottom - r.bottom - extra);
+  shell.style.top = `${centerY + shift}px`;
+}
+
+const onOrientationChange = () => {
+  resize(true);
+  window.setTimeout(() => resize(true), 150);
+  window.setTimeout(() => resize(true), 350);
+};
+window.addEventListener('resize', () => resize());
+window.addEventListener('orientationchange', onOrientationChange);
+screen.orientation?.addEventListener('change', onOrientationChange);
+window.visualViewport?.addEventListener('resize', positionForKeyboard);
+window.visualViewport?.addEventListener('scroll', positionForKeyboard);
 document.addEventListener('focusin', (e) => {
-  typing = e.target instanceof HTMLInputElement;
+  if (!(e.target instanceof HTMLInputElement)) return;
+  window.clearTimeout(closeTimer);
+  keyboardClosing = false;
+  typing = true;
+  positionForKeyboard();
 });
-document.addEventListener('focusout', () => {
+document.addEventListener('focusout', (e) => {
+  if (!(e.target instanceof HTMLInputElement)) return;
   typing = false;
-  // Re-fit once the on-screen keyboard has gone.
-  window.setTimeout(resize, 300);
+  keyboardClosing = true;
+  closeTimer = window.setTimeout(() => {
+    keyboardClosing = false;
+    resize();
+  }, 300);
 });
+if (isMobile) {
+  const hint = document.createElement('div');
+  hint.id = 'orientation-hint';
+  hint.setAttribute('role', 'status');
+  hint.textContent = 'ROTATE PHONE FOR LANDSCAPE KEYBOARD';
+  document.body.appendChild(hint);
+}
 resize();
 
 const g = new Gfx(canvas);

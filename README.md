@@ -25,6 +25,10 @@ Web Audio, with a new in-game tune every financial year. No game engine and no b
   Every screen has an on-screen **BACK** button, key hints are hidden, and tapping the
   company name box brings up the device's keyboard. Saving to .sav files is not offered on
   phones and tablets. Add the page to your home screen to play it full screen as a web app.
+  Hold the phone sideways with rotation lock off when entering a company name. The native
+  keyboard's orientation is controlled by the device, not the game's sideways portrait
+  layout; a rotate-phone hint appears if the browser still reports portrait. Tap the name
+  box once to edit, then use the keyboard's Done/Enter key or **CONTINUE**.
 - **Partner Center**: ↑/↓ pick a designation or specialization, ←/→ switch between the
   list and the audit booking buttons, **Tab** / **Shift+Tab** switch between the
   Solutions Partner, Specializations and Frontier tabs.

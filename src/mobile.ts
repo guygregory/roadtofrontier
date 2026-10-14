@@ -2,6 +2,16 @@
 export const isMobile =
   typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
+/** Device orientation, independent of viewport changes caused by the keyboard. */
+export function devicePortrait(): boolean | null {
+  const type = screen.orientation?.type;
+  if (type?.startsWith('portrait')) return true;
+  if (type?.startsWith('landscape')) return false;
+  const angle = (window as Window & { orientation?: number }).orientation;
+  if (typeof angle === 'number') return Math.abs(angle) % 180 === 0;
+  return null;
+}
+
 /** True when launched from the home screen as an installed web app. */
 export function isStandalone(): boolean {
   if (typeof window === 'undefined') return false;

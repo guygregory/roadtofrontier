@@ -33,7 +33,7 @@ export class Input {
   /** Set when a widget consumed this frame's click/enter so nothing else reacts. */
   consumed = false;
   lastDevice: 'mouse' | 'keyboard' = 'mouse';
-  /** Hidden text box that brings up the device's on-screen keyboard (touch screens only). */
+  /** Native text box over the canvas name field (touch screens only). */
   readonly field: HTMLInputElement | null = null;
   /** Logical-screen box of the text being edited: tapping it opens the on-screen keyboard. */
   textRect: { x: number; y: number; w: number; h: number } | null = null;
@@ -41,6 +41,7 @@ export class Input {
   fieldValue: string | null = null;
 
   private textOn = false;
+  private composing = false;
   private pendingField: string | null = null;
   private pendingKeys: Key[] = [];
   private pendingTyped: string[] = [];
@@ -55,7 +56,7 @@ export class Input {
     private scaleRef: () => number,
     /** True when the screen is shown rotated 90deg clockwise (mobile held in portrait). */
     private rotatedRef: () => boolean = () => false,
-    /** Touch screens: type through a hidden text box so the on-screen keyboard appears. */
+    /** Touch screens: type through a native text box so the on-screen keyboard appears. */
     softKeyboard = false,
   ) {
     if (softKeyboard) {
@@ -67,11 +68,32 @@ export class Input {
       f.setAttribute('autocapitalize', 'words');
       f.setAttribute('autocorrect', 'off');
       f.setAttribute('enterkeyhint', 'done');
-      f.setAttribute('aria-label', 'Text entry');
-      document.body.appendChild(f);
-      f.addEventListener('input', () => {
+      f.setAttribute('aria-label', 'Company name');
+      f.hidden = true;
+      canvas.parentElement!.appendChild(f);
+      const onFieldInput = () => {
+        if (this.composing) return;
         this.pendingField = f.value;
         this.pendingAny = true;
+      };
+      const onCompositionStart = () => { this.composing = true; };
+      const onCompositionEnd = () => {
+        this.composing = false;
+        onFieldInput();
+      };
+      const onFieldDown = () => {
+        this.pendingAny = true;
+      };
+      f.addEventListener('input', onFieldInput);
+      f.addEventListener('pointerdown', onFieldDown);
+      f.addEventListener('compositionstart', onCompositionStart);
+      f.addEventListener('compositionend', onCompositionEnd);
+      this.listeners.push(() => {
+        f.removeEventListener('input', onFieldInput);
+        f.removeEventListener('pointerdown', onFieldDown);
+        f.removeEventListener('compositionstart', onCompositionStart);
+        f.removeEventListener('compositionend', onCompositionEnd);
+        f.remove();
       });
       this.field = f;
     }
@@ -106,10 +128,7 @@ export class Input {
         this.lastDevice = 'mouse';
       }
       this.pendingAny = true;
-      // The on-screen keyboard only appears when the text box is focused inside the tap itself.
-      const r = this.textRect;
-      if (this.textOn && r && p.x >= r.x && p.y >= r.y && p.x < r.x + r.w && p.y < r.y + r.h) this.openKeyboard(true);
-      else canvas.focus();
+      canvas.focus();
       e.preventDefault();
     };
     const onWheel = (e: WheelEvent) => {
@@ -118,8 +137,12 @@ export class Input {
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.isComposing || this.composing) {
+        this.pendingAny = true;
+        return;
+      }
       const printable = e.key.length === 1;
-      // Typing into the hidden text box: its input event carries the text (Android keyboards
+      // Typing into the native text box: its input event carries the text (Android keyboards
       // report most keys as "Unidentified"), so only keys like Enter are handled here.
       if (this.field && e.target === this.field && (printable || ['Backspace', 'Delete', 'Unidentified', 'Process'].includes(e.key))) {
         this.pendingAny = true;
@@ -169,32 +192,35 @@ export class Input {
   set textMode(on: boolean) {
     if (on === this.textOn) return;
     this.textOn = on;
-    if (on) this.openKeyboard();
-    else {
+    document.documentElement.classList.toggle('name-entry', on && !!this.field);
+    if (!on) {
       this.textRect = null;
       this.field?.blur();
+      if (this.field) this.field.hidden = true;
     }
   }
 
-  /**
-   * Focus the hidden text box so the device shows its keyboard. iOS only shows it for a focus made
-   * inside a tap, so a tap re-focuses the box even if an earlier (programmatic) focus already took.
-   */
-  openKeyboard(fromTap = false): void {
-    const f = this.field;
-    if (!f || !this.textOn) return;
-    if (fromTap && document.activeElement === f) f.blur();
-    f.focus({ preventScroll: true });
-    const n = f.value.length;
-    f.setSelectionRange(n, n);
-  }
-
-  /** Keep the hidden text box in step with the game's copy of the text. */
+  /** Keep the native text box in step with the game's copy of the text. */
   syncField(value: string, maxLength: number): void {
     const f = this.field;
     if (!f) return;
+    const r = this.textRect;
+    f.hidden = !this.textOn || !r;
+    if (r) {
+      f.style.left = `${r.x / SCREEN_W * 100}%`;
+      f.style.top = `${r.y / SCREEN_H * 100}%`;
+      f.style.width = `${r.w / SCREEN_W * 100}%`;
+      f.style.height = `${r.h / SCREEN_H * 100}%`;
+      f.style.fontSize = `${Math.max(16, 8 * this.scaleRef())}px`;
+      f.style.paddingLeft = `${6 * this.scaleRef()}px`;
+    }
     f.maxLength = maxLength;
-    if (f.value !== value) f.value = value;
+    if (!this.composing && f.value !== value) {
+      const start = f.selectionStart;
+      const end = f.selectionEnd;
+      f.value = value;
+      if (start !== null && end !== null) f.setSelectionRange(Math.min(start, value.length), Math.min(end, value.length));
+    }
   }
 
   /** Move pending DOM events into this frame's state. Call once at frame start. */

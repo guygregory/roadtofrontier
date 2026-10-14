@@ -55,7 +55,7 @@ export class SetupScene implements Scene {
     paragraph(g, 'Every great partner starts somewhere. What is your company called?', 30, 56, 260, C.LGREY);
     g.bevel(30, 84, 260, 16, C.BLACK, C.BLACK, C.LSLATE, true);
     // Touch screens type through the device's on-screen keyboard: tap the box to bring it up.
-    inp.textRect = { x: 26, y: 70, w: 268, h: 44 };
+    inp.textRect = { x: 30, y: 84, w: 260, h: 16 };
     if (inp.fieldValue !== null) {
       this.typedOnDevice = true;
       // Phone keyboards type curly apostrophes and dashes (smart punctuation): keep them as plain ones.
@@ -82,7 +82,7 @@ export class SetupScene implements Scene {
     inp.syncField(this.name, 22);
     if (inp.field && !this.typedOnDevice) text(g, 'TAP THE BOX TO TYPE', 36, 104, Math.floor(app.t * 2) % 2 ? C.CYAN : C.LSLATE);
     const cursor = Math.floor(app.t * 3) % 2 ? '_' : ' ';
-    text(g, this.name + cursor, 36, 89, C.YELLOW);
+    if (!inp.field || document.activeElement !== inp.field) text(g, this.name + cursor, 36, 89, C.YELLOW);
     text(g, `${this.name.length}/22`, 286, 104, C.GREY, { align: 'right' });
     const ok = this.name.trim().length > 0;
     // CONTINUE is declared first so it keeps the keyboard focus: Enter continues.

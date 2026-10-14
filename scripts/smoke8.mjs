@@ -81,6 +81,10 @@ await m.evaluate(() => {
 // Tap the native name box; its default action focuses it without a canvas focus cycle.
 await tap(m, 120, 92);
 check('tapping the name box focuses the text field', await m.evaluate(() => document.activeElement?.id === 'textfield'));
+check('only active name editing hides the game controls', await m.evaluate(() =>
+  document.documentElement.classList.contains('name-typing') &&
+  getComputedStyle(document.getElementById('dpad')).display === 'none' &&
+  getComputedStyle(document.getElementById('fire')).display === 'none'));
 check('native input is aligned with the name box', await m.evaluate(() => {
   const canvas = document.getElementById('screen').getBoundingClientRect();
   const f = document.getElementById('textfield').getBoundingClientRect();
@@ -183,6 +187,9 @@ await m.evaluate(() => {
 await wait(m, 400);
 check('Enter on the on-screen keyboard continues', await m.evaluate(() => window.__rtf.scene.step === 1));
 check('keyboard closed after continuing', await m.evaluate(() => document.activeElement?.id !== 'textfield'));
+check('continuing restores normal gameplay layout and controls', await m.evaluate(() =>
+  !document.documentElement.classList.contains('name-typing') &&
+  getComputedStyle(document.getElementById('dpad')).display !== 'none'));
 check('final input before Enter is retained and field hidden', await m.evaluate(() =>
   window.__rtf.scene.name === 'Tap Tech' && document.getElementById('textfield').hidden));
 await tap(m, 40, 228);
@@ -282,15 +289,66 @@ await m.evaluate(() => {
 });
 await wait(m, 500);
 check('actual rotation updates layout while editing without losing focus', await m.evaluate(() =>
-  document.documentElement.classList.contains('portrait') && document.activeElement?.id === 'textfield'));
-check('portrait name entry shows a non-blocking orientation hint', await m.evaluate(() =>
-  getComputedStyle(document.getElementById('orientation-hint')).display !== 'none' &&
-  getComputedStyle(document.getElementById('orientation-hint')).pointerEvents === 'none'));
+  !document.documentElement.classList.contains('portrait') &&
+  document.documentElement.classList.contains('name-typing') &&
+  document.activeElement?.id === 'textfield'));
 await m.setViewportSize({ width: 390, height: 844 });
 await tap(m, 120, 92);
-check('rotated native name box remains tappable', await m.evaluate(() => document.activeElement?.id === 'textfield'));
+check('upright portrait name box remains tappable without refocusing', await m.evaluate(() =>
+  document.activeElement?.id === 'textfield' && !document.documentElement.classList.contains('portrait')));
+await shot(m, 'setup-portrait-editing');
 await tap(m, 240, 137);
-check('rotated Continue coordinates work', await m.evaluate(() => window.__rtf.scene.step === 1));
+check('Continue restores landscape for heritage immediately', await m.evaluate(() =>
+  window.__rtf.scene.step === 1 && document.documentElement.classList.contains('portrait') &&
+  !document.documentElement.classList.contains('name-typing')));
+await tap(m, 40, 228);
+check('returning to name entry stays landscape until the field is tapped', await m.evaluate(() =>
+  window.__rtf.scene.step === 0 && document.documentElement.classList.contains('portrait')));
+await tap(m, 120, 92);
+check('a tap changes portrait-held name entry to upright without losing focus', await m.evaluate(() =>
+  !document.documentElement.classList.contains('portrait') && document.activeElement?.id === 'textfield'));
+const portraitEditingFit = await m.evaluate(() => document.getElementById('screen').style.width);
+await m.evaluate(() => {
+  window.__portraitBlurs = 0;
+  document.getElementById('textfield').addEventListener('blur', () => window.__portraitBlurs++);
+  Object.defineProperty(window.visualViewport, 'height', { configurable: true, value: 400 });
+  window.visualViewport.dispatchEvent(new Event('resize'));
+});
+await tap(m, 120, 92);
+check('portrait editing stays upright and focused through keyboard resize and repeated taps', await m.evaluate((width) =>
+  document.getElementById('screen').style.width === width &&
+  !document.documentElement.classList.contains('portrait') &&
+  document.activeElement?.id === 'textfield' && window.__portraitBlurs === 0, portraitEditingFit));
+await m.evaluate(() => document.getElementById('textfield').blur());
+check('dismissing editing restores landscape before the keyboard finishes closing', await m.evaluate(() =>
+  document.documentElement.classList.contains('portrait') &&
+  !document.documentElement.classList.contains('name-typing') &&
+  getComputedStyle(document.getElementById('dpad')).display !== 'none'));
+await m.evaluate(() => {
+  delete window.visualViewport.height;
+  window.visualViewport.dispatchEvent(new Event('resize'));
+});
+await wait(m, 400);
+await tap(m, 120, 92);
+await m.keyboard.press('Enter');
+await wait(m, 400);
+check('Done/Enter restores landscape on a portrait-held device', await m.evaluate(() =>
+  window.__rtf.scene.step === 1 && document.documentElement.classList.contains('portrait') &&
+  !document.documentElement.classList.contains('name-typing')));
+await tap(m, 60, 81);
+check('heritage selection keeps difficulty in landscape', await m.evaluate(() =>
+  window.__rtf.scene.step === 2 && document.documentElement.classList.contains('portrait')));
+await tap(m, 100, 71);
+check('difficulty selection keeps welcome in landscape', await m.evaluate(() =>
+  window.__rtf.scene.step === 3 && document.documentElement.classList.contains('portrait')));
+for (const name of ['HubScene', 'GameMenuScene', 'CompanyScene', 'PartnerCenterScene', 'TitleScene']) {
+  await go(m, name);
+  await wait(m, 100);
+  check(`${name} retains landscape when the device is held upright`, await m.evaluate(() =>
+    document.documentElement.classList.contains('portrait') &&
+    !document.documentElement.classList.contains('name-typing') &&
+    document.getElementById('textfield').hidden));
+}
 await m.evaluate(() => {
   window.__testOrientation = 'landscape-primary';
   Object.defineProperty(window, 'innerWidth', window.__viewportDescriptors.width);
@@ -299,9 +357,9 @@ await m.evaluate(() => {
 await m.setViewportSize({ width: 844, height: 390 });
 await m.evaluate(() => window.dispatchEvent(new Event('orientationchange')));
 await wait(m, 500);
-check('landscape rotation removes CSS rotation and hint', await m.evaluate(() =>
+check('landscape rotation uses the normal gameplay layout', await m.evaluate(() =>
   !document.documentElement.classList.contains('portrait') &&
-  getComputedStyle(document.getElementById('orientation-hint')).display === 'none'));
+  !document.documentElement.classList.contains('name-typing')));
 await go(m, 'SetupScene');
 await wait(m, 100);
 await tap(m, 120, 92);

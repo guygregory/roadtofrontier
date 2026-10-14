@@ -20,15 +20,16 @@ Web Audio, with a new in-game tune every financial year. No game engine and no b
 - **Mouse**: click menu items. Right-click or Esc goes back.
 - **Keyboard**: arrows/WASD to move, Enter/Space to select, Esc to go back, number keys
   for quick picks. **M** toggles music, **F** toggles fullscreen.
-- **Phones & tablets**: the game always plays in landscape and fills the screen height. Tap
+- **Phones & tablets**: gameplay uses landscape and fills the screen height. Tap
   menu items directly, or use the on-screen D-pad (left) and red button (right, = Enter).
   Every screen has an on-screen **BACK** button, key hints are hidden, and tapping the
   company name box brings up the device's keyboard. Saving to .sav files is not offered on
   phones and tablets. Add the page to your home screen to play it full screen as a web app.
-  Hold the phone sideways with rotation lock off when entering a company name. The native
-  keyboard's orientation is controlled by the device, not the game's sideways portrait
-  layout; a rotate-phone hint appears if the browser still reports portrait. Tap the name
-  box once to edit, then use the keyboard's Done/Enter key or **CONTINUE**.
+  Tap the name box once to edit: the name-entry screen temporarily becomes upright
+  (portrait when the phone is held upright), with the game controls hidden, so it matches
+  the native keyboard. Done/Enter, **CONTINUE**, **BACK**, or leaving the field restores
+  the normal landscape layout. All other screens remain landscape. The device still
+  controls the native keyboard's orientation.
 - **Partner Center**: ↑/↓ pick a designation or specialization, ←/→ switch between the
   list and the audit booking buttons, **Tab** / **Shift+Tab** switch between the
   Solutions Partner, Specializations and Frontier tabs.

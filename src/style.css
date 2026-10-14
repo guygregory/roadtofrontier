@@ -58,7 +58,7 @@ html.mobile #shell {
   transform: translate(-50%, -50%);
 }
 
-/* Held in portrait: turn the whole game sideways so it is always played in landscape. */
+/* Held in portrait: turn gameplay sideways, except while entering the company name. */
 html.mobile.portrait #shell {
   transform: translate(-50%, -50%) rotate(90deg);
 }
@@ -91,6 +91,11 @@ html.mobile #dpad {
 
 html.mobile #fire {
   right: max(env(safe-area-inset-right, 0px), calc((var(--side) - var(--pad)) / 2));
+}
+
+html.mobile.name-typing #dpad,
+html.mobile.name-typing #fire {
+  display: none;
 }
 
 /* NES-style plus-shaped pad */
@@ -208,25 +213,4 @@ html.mobile #fire {
   background: #000;
   color: #ffff55;
   caret-color: #ffff55;
-}
-
-#orientation-hint {
-  display: none;
-  position: fixed;
-  z-index: 1;
-  top: max(8px, env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: 90%;
-  color: #fff;
-  background: #222;
-  padding: 6px;
-  font: 12px monospace;
-  text-align: center;
-  pointer-events: none;
-}
-
-html.mobile.name-entry.portrait #orientation-hint {
-  display: block;
 }

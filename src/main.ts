@@ -33,33 +33,34 @@ root.classList.toggle('mobile', isMobile);
 
 let scale = 1;
 let rotated = false;
-/** True while the on-screen keyboard is up: keep the layout steady instead of re-fitting the game. */
+/** Only native company-name editing temporarily uses the upright mobile layout. */
 let typing = false;
 /** Orientation at the last fit: turning the phone always re-fits, even while typing. */
 let fittedOrientation: boolean | null = null;
 let centerX = 0;
 let centerY = 0;
+let mobileWidth = 0;
+let mobileHeight = 0;
 let keyboardClosing = false;
 let closeTimer = 0;
 
 /**
- * Mobile: always landscape (the game is turned sideways when the phone is held upright),
- * filling the full height with the D-pad and fire button in the space either side.
+ * Mobile gameplay is landscape; native name entry stays upright to match the keyboard.
  */
 function resizeMobile(portrait: boolean): void {
-  rotated = portrait;
+  rotated = portrait && !typing;
   root.classList.toggle('portrait', rotated);
-  const w = rotated ? window.innerHeight : window.innerWidth;
-  const h = rotated ? window.innerWidth : window.innerHeight;
-  const reserve = Math.min(180, Math.max(90, h * 0.3));
+  const w = rotated ? mobileHeight : mobileWidth;
+  const h = rotated ? mobileWidth : mobileHeight;
+  const reserve = typing ? 0 : Math.min(180, Math.max(90, h * 0.3));
   scale = Math.max(0.5, Math.min((w - 2 * reserve) / SCREEN_W, h / SCREEN_H));
   const cw = Math.round(SCREEN_W * scale);
   const ch = Math.round(SCREEN_H * scale);
   const side = (w - cw) / 2;
   shell.style.width = `${w}px`;
   shell.style.height = `${h}px`;
-  centerX = window.innerWidth / 2;
-  centerY = window.innerHeight / 2;
+  centerX = mobileWidth / 2;
+  centerY = mobileHeight / 2;
   shell.style.left = `${centerX}px`;
   shell.style.top = `${centerY}px`;
   shell.style.setProperty('--side', `${side}px`);
@@ -78,6 +79,13 @@ function resize(forceOrientation = false): void {
       ? fittedOrientation ?? window.innerHeight > window.innerWidth
       : window.innerHeight > window.innerWidth);
     if ((!typing && !keyboardClosing) || forceOrientation || portrait !== fittedOrientation) {
+      if (!typing && !keyboardClosing) {
+        mobileWidth = window.innerWidth;
+        mobileHeight = window.innerHeight;
+      } else if (portrait !== fittedOrientation) {
+        // A real turn swaps the pre-keyboard dimensions, not the keyboard's reduced viewport.
+        [mobileWidth, mobileHeight] = [mobileHeight, mobileWidth];
+      }
       fittedOrientation = portrait;
       resizeMobile(portrait);
     }
@@ -127,28 +135,25 @@ screen.orientation?.addEventListener('change', onOrientationChange);
 window.visualViewport?.addEventListener('resize', positionForKeyboard);
 window.visualViewport?.addEventListener('scroll', positionForKeyboard);
 document.addEventListener('focusin', (e) => {
-  if (!(e.target instanceof HTMLInputElement)) return;
+  if (!isMobile || !(e.target instanceof HTMLInputElement) || e.target.id !== 'textfield') return;
   window.clearTimeout(closeTimer);
   keyboardClosing = false;
   typing = true;
+  root.classList.add('name-typing');
+  resizeMobile(fittedOrientation ?? window.innerHeight > window.innerWidth);
   positionForKeyboard();
 });
 document.addEventListener('focusout', (e) => {
-  if (!(e.target instanceof HTMLInputElement)) return;
+  if (!isMobile || !(e.target instanceof HTMLInputElement) || e.target.id !== 'textfield') return;
   typing = false;
+  root.classList.remove('name-typing');
   keyboardClosing = true;
+  resizeMobile(fittedOrientation ?? window.innerHeight > window.innerWidth);
   closeTimer = window.setTimeout(() => {
     keyboardClosing = false;
     resize();
   }, 300);
 });
-if (isMobile) {
-  const hint = document.createElement('div');
-  hint.id = 'orientation-hint';
-  hint.setAttribute('role', 'status');
-  hint.textContent = 'ROTATE PHONE FOR LANDSCAPE KEYBOARD';
-  document.body.appendChild(hint);
-}
 resize();
 
 const g = new Gfx(canvas);
